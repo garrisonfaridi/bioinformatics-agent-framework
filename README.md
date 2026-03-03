@@ -5,7 +5,7 @@ integrating autonomous AI planning, Snakemake pipeline execution, and automated 
 
 ## What This Is
 
-This framework wraps standard bioinformatics pipelines (Snakemake, Nextflow) with three layers of
+This framework wraps standard bioinformatics pipelines (Snakemake, Nextflow) with four layers of
 AI capability:
 
 1. **Biomni** — 150+ specialized bioinformatics tools (database lookups, literature mining, GO
@@ -13,6 +13,9 @@ AI capability:
 2. **Claude Opus** — used for research synthesis, experimental design, and generating structured
    implementation plans
 3. **Claude Sonnet** — handles all scripting, debugging, and pipeline execution in the implementation loop
+4. **Sequential Thinking MCP** — structured multi-step reasoning invoked automatically at decision
+   points involving competing hypotheses, method tradeoffs, or unexpected results; makes reasoning
+   explicit and auditable rather than buried in inline inference
 
 The result is a system where you describe a bioinformatics question in plain language and receive
 a reproducible, peer-reviewed analysis pipeline.
@@ -26,21 +29,38 @@ a reproducible, peer-reviewed analysis pipeline.
 │                         User (Claude Code)                          │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
-          ┌────────────────────┼────────────────────┐
-          │                    │                    │
-   ┌──────▼──────┐    ┌────────▼───────┐    ┌──────▼──────────┐
-   │   Biomni    │    │  Claude Opus   │    │  Claude Sonnet  │
-   │  MCP Server │    │   (Planning)   │    │(Implementation) │
-   │             │    │                │    │                 │
-   │ 150+ tools: │    │ Synthesizes    │    │ Writes scripts, │
-   │ databases,  │    │ Biomni output  │    │ debugs, runs    │
-   │ literature, │    │ into plan.md   │    │ pipelines       │
-   │ GO/KEGG,    │    │ with ExitPlan  │    │                 │
-   │ drug-gene,  │    │ Mode approval  │    │                 │
-   │ protocols   │    │                │    │                 │
-   └─────────────┘    └────────────────┘    └─────────────────┘
-          │
-   ┌──────▼──────────────────────────────────────────────────────┐
+     ┌─────────────────────────┼─────────────────────────┐
+     │                         │                         │
+┌────▼────────┐       ┌────────▼───────┐       ┌────────▼────────┐
+│   Biomni    │       │  Claude Opus   │       │  Claude Sonnet  │
+│  MCP Server │       │   (Planning)   │       │(Implementation) │
+│             │       │                │       │                 │
+│ 150+ tools: │       │ Synthesizes    │       │ Writes scripts, │
+│ databases,  │       │ Biomni output  │       │ debugs, runs    │
+│ literature, │       │ into plan.md   │       │ pipelines       │
+│ GO/KEGG,    │       │ with ExitPlan  │       │                 │
+│ drug-gene,  │       │ Mode approval  │       │                 │
+│ protocols   │       │                │       │                 │
+└─────────────┘       └────────────────┘       └─────────────────┘
+                               │
+              ┌────────────────▼────────────────┐
+              │     Sequential Thinking MCP      │
+              │                                  │
+              │  Invoked automatically at any    │
+              │  decision point involving:       │
+              │  · Competing hypotheses (≥2)     │
+              │  · Method/tool tradeoffs         │
+              │  · Unexpected results            │
+              │  · Cascading architecture choices│
+              │  · Before every plan approval    │
+              │  · Critical peer review issues   │
+              │                                  │
+              │  Makes reasoning explicit and    │
+              │  revisable — not buried in       │
+              │  inline inference                │
+              └────────────────┬────────────────┘
+                               │
+   ┌───────────────────────────▼─────────────────────────────────┐
    │                    Snakemake Pipeline                        │
    │                                                              │
    │  QC → Kinship → LMM → [checkpoint] → Branch A (enrichment) │
@@ -57,10 +77,24 @@ a reproducible, peer-reviewed analysis pipeline.
 | Phase | Model | Purpose |
 |-------|-------|---------|
 | **1 — Research** | Biomni + Opus | Biomni queries databases and literature; Opus synthesizes evidence into design decisions |
-| **2 — Planning** | Opus + `EnterPlanMode` | Opus writes `plan.md` covering rationale, tool selection, failure modes; user approves before any code is written |
-| **3 — Implementation** | Sonnet (default) | Scripting, debugging, pipeline execution; fast iteration at lower cost |
+| **2 — Planning** | Opus + `EnterPlanMode` + Sequential Thinking | Sequential thinking stress-tests the plan before `ExitPlanMode`; user approves before any code is written |
+| **3 — Implementation** | Sonnet + Sequential Thinking | Scripting and pipeline execution; sequential thinking invoked automatically at ambiguous decision points |
 
-**Rule:** Biomni provides grounded database facts. Opus reasons over them. Sonnet executes.
+**Rule:** Biomni provides grounded database facts. Opus reasons over them. Sequential thinking makes that reasoning explicit at high-stakes decision points. Sonnet executes.
+
+### Sequential Thinking Triggers
+
+The agent invokes the sequential thinking MCP automatically — without being asked — when any of
+these conditions are met:
+
+| Condition | Example |
+|-----------|---------|
+| ≥2 competing hypotheses for a result or error | SNP count discrepancy: filter label bug vs calculation error vs wrong input file |
+| Method selection with real statistical tradeoffs | LMM vs logistic GWAS; VQSR vs hard filters at small N; pseudobulk vs mixed model |
+| Unexpected or counterintuitive pipeline output | λ_GC = 1.8 when < 1.1 expected; 0 annotated T cells in PBMC data |
+| Architectural decision affecting ≥3 steps | Checkpoint placement; processing order; intermediate file format |
+| Before finalizing any implementation plan | Stress-test assumptions, identify most likely failure mode |
+| Critical-severity peer review issues | Trace root cause before implementing any correction |
 
 ---
 
@@ -206,6 +240,42 @@ Every pipeline in this framework ends with an automated Claude Opus peer review 
 **The approve-before-execute contract:** proposed changes are never auto-applied. The user reads
 `proposed_changes.md`, then explicitly approves: *"Implement the proposed changes from
 proposed_changes.md"*. This keeps humans in the loop for all scientifically significant corrections.
+
+---
+
+## Sequential Thinking Pattern
+
+The agent uses the `sequential-thinking` MCP to make reasoning explicit at high-stakes decision
+points. This is **automatic** — not user-initiated — and fires based on uncertainty thresholds
+defined in `CLAUDE.md`.
+
+### Why this matters for complex analyses
+
+Inline reasoning (thinking while writing a response) is invisible and irreversible. When a
+bioinformatics decision has real consequences — choosing a normalization method, diagnosing a
+discrepancy, setting a QC threshold — unstructured reasoning can commit to a wrong branch too
+early without exploring alternatives.
+
+Sequential thinking enforces:
+- **Explicit branching** — every plausible explanation is enumerated before any is acted on
+- **Revision** — earlier steps can be marked wrong and reconsidered (`isRevision=True`)
+- **Verifiable conclusions** — reasoning terminates only when a position can be defended, not when it feels right
+
+### Example: SNP count discrepancy (mouse GWAS pilot)
+
+Without sequential thinking, the agent saw "61,954 post-QC SNPs" in the QC summary vs "16,710"
+in the Bonferroni threshold and immediately investigated the most salient hypothesis (label bug).
+That happened to be correct — but three other hypotheses (wrong BIM, PLINK filter ordering bug,
+calculation error in check_significance.py) were never formally enumerated or ruled out.
+
+With sequential thinking configured, the agent would have opened all four branches, read the
+relevant source for each, and closed them with evidence before committing to the fix. The result
+is the same, but the reasoning is traceable and less likely to miss a branch on harder problems.
+
+### When it fires
+
+See the trigger table in the [Three-Phase AI Workflow](#three-phase-ai-workflow) section above.
+Full specification is in `CLAUDE.md` under *Sequential Thinking Protocol*.
 
 ---
 
