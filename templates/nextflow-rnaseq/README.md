@@ -1,0 +1,51 @@
+# [Project Title] — Bulk RNA-seq Pipeline (Nextflow)
+
+## Description
+
+[2–3 sentence description of the project, client, biological question, and organism.]
+
+## Requirements
+
+- Nextflow ≥23.10
+- Docker or Singularity
+- ≥32 GB RAM (for STAR genome index)
+
+## Usage
+
+```bash
+# 1. Edit config
+cp config/samplesheet.csv.template config/samplesheet.csv
+# fill in sample names, FASTQ paths, strandedness
+
+# 2. Run (local with Docker)
+nextflow run main.nf -profile docker --outdir results
+
+# 3. Run (HPC with Singularity + SLURM)
+nextflow run main.nf -profile singularity,slurm --outdir results
+```
+
+## Inputs
+
+| File | Description |
+|------|-------------|
+| `config/samplesheet.csv` | sample, fastq_1, fastq_2, strandedness |
+| `config/comparisons.csv` | condition_1, condition_2 |
+| `data/ref/genome.fa` | Reference genome FASTA (GRCh38) |
+| `data/ref/annotation.gtf` | Gene annotation GTF |
+
+## Outputs
+
+| Directory | Contents |
+|-----------|----------|
+| `results/qc/` | FastQC, fastp, MultiQC HTML report |
+| `results/alignment/` | Sorted BAMs, STAR logs |
+| `results/counts/` | salmon quant.sf files |
+| `results/deseq2/` | DE tables (TSV), plots (PDF/PNG) |
+
+## Methods
+
+See `METHODS.md` for publishable methods text.
+
+## Contact
+
+[Your name] — [email]

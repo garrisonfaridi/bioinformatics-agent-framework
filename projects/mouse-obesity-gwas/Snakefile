@@ -1,0 +1,432 @@
+"""
+Mouse Obesity GWAS Pipeline
+Snakemake workflow with dynamic branching via checkpoint.
+
+Run (pilot):  snakemake -n --cores 4 --use-conda --configfile config.yaml
+Full run:     snakemake --cores 8 --use-conda --configfile config.yaml
+"""
+
+import json
+import os
+from pathlib import Path
+
+configfile: "config.yaml"
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def get_branch_outputs(wildcards):
+    """
+    Checkpoint input function: decides downstream rule outputs after
+    check_significance writes significance_check.json.
+    """
+    with checkpoints.check_significance.get(**wildcards).output[0].open() as fh:
+        data = json.load(fh)
+    if data["has_hits"]:
+        return [
+            "results/05_enrichment/go/enrichment_table.csv",
+            "results/05_enrichment/catalog/catalog_overlap.csv",
+        ]
+    else:
+        return [
+            "results/04_bslmm/hyperparameters.csv",
+            "results/04_bslmm/architecture_summary.txt",
+        ]
+
+
+# ---------------------------------------------------------------------------
+# Target rule
+# ---------------------------------------------------------------------------
+
+rule all:
+    input:
+        get_branch_outputs,
+        "results/06_qc_plots/qq_plot.png",
+        "results/07_biomni_qc/biomni_qc_report.md",
+        "results/08_annotation/top_loci_genes.tsv",
+        "results/peer_review/review_report.md",
+
+
+# ---------------------------------------------------------------------------
+# Step 0 — Download data
+# ---------------------------------------------------------------------------
+
+rule download_data:
+    output:
+        bed   = "data/cfw.bed",
+        bim   = "data/cfw.bim",
+        fam   = "data/cfw.fam",
+        pheno = "data/pheno.csv",
+    params:
+        pilot_n = config["dataset"]["pilot_n"],
+        doi     = config["dataset"]["dryad_doi"],
+    log:
+        "logs/download_data.log",
+    conda:
+        "envs/gwas.yml",
+    script:
+        "scripts/download_data.py"
+
+
+# ---------------------------------------------------------------------------
+# Step 1 — Phenotype preparation
+# ---------------------------------------------------------------------------
+
+rule phenotype_prep:
+    input:
+        pheno = "data/pheno.csv",
+        fam   = "data/cfw.fam",
+    output:
+        pheno_int = "results/01_phenotype/pheno_int.txt",
+        dist_plot = "results/01_phenotype/pheno_dist.png",
+        summary   = "results/01_phenotype/step_summary.txt",
+    params:
+        column    = config["phenotype"]["column"],
+        transform = config["phenotype"]["transform"],
+    log:
+        "logs/phenotype_prep.log",
+    conda:
+        "envs/gwas.yml",
+    script:
+        "scripts/phenotype_prep.R"
+
+
+# ---------------------------------------------------------------------------
+# Step 2 — Genotype QC (PLINK2)
+# ---------------------------------------------------------------------------
+
+rule genotype_qc:
+    input:
+        bed = "data/cfw.bed",
+        bim = "data/cfw.bim",
+        fam = "data/cfw.fam",
+    output:
+        bed     = "results/02_qc/cfw_qc.bed",
+        bim     = "results/02_qc/cfw_qc.bim",
+        fam     = "results/02_qc/cfw_qc.fam",
+        vmiss   = "results/02_qc/cfw_qc.vmiss",
+        smiss   = "results/02_qc/cfw_qc.smiss",
+        afreq   = "results/02_qc/cfw_qc.afreq",
+    params:
+        maf     = config["thresholds"]["maf"],
+        geno    = config["thresholds"]["geno"],
+        mind    = config["thresholds"]["mind"],
+        outdir  = "results/02_qc",
+    log:
+        "logs/genotype_qc.log",
+    conda:
+        "envs/gwas.yml",
+    shell:
+        """
+        plink2 \
+          --bfile data/cfw \
+          --maf {params.maf} \
+          --geno {params.geno} \
+          --mind {params.mind} \
+          --make-bed \
+          --out {params.outdir}/cfw_qc \
+          --missing \
+          --freq \
+          --no-psam-pheno \
+          2>&1 | tee {log}
+        """
+
+
+rule genotype_qc_report:
+    input:
+        vmiss  = "results/02_qc/cfw_qc.vmiss",
+        smiss  = "results/02_qc/cfw_qc.smiss",
+        afreq  = "results/02_qc/cfw_qc.afreq",
+        bim    = "results/02_qc/cfw_qc.bim",
+        fam_qc = "results/02_qc/cfw_qc.fam",
+        fam_in = "data/cfw.fam",
+    output:
+        maf_plot = "results/02_qc/maf_histogram.png",
+        summary  = "results/02_qc/qc_summary.txt",
+    log:
+        "logs/genotype_qc_report.log",
+    conda:
+        "envs/gwas.yml",
+    script:
+        "scripts/genotype_qc_report.R"
+
+
+# ---------------------------------------------------------------------------
+# Step 3 — Kinship matrix (GEMMA -gk 1)
+# ---------------------------------------------------------------------------
+
+rule kinship:
+    input:
+        bed   = "results/02_qc/cfw_qc.bed",
+        bim   = "results/02_qc/cfw_qc.bim",
+        fam   = "results/02_qc/cfw_qc.fam",
+        pheno = "results/01_phenotype/pheno_int.txt",
+    output:
+        kin   = "results/03_lmm/cfw_qc.cXX.txt",
+        # Declare copies explicitly so run_lmm can trace the dependency
+        bed_lmm = "results/03_lmm/cfw_qc.bed",
+        bim_lmm = "results/03_lmm/cfw_qc.bim",
+        fam_lmm = "results/03_lmm/cfw_qc.fam",
+    params:
+        outdir  = "results/03_lmm",
+        prefix  = "cfw_qc",
+    log:
+        "logs/kinship.log",
+    conda:
+        "envs/gwas.yml",
+    shell:
+        """
+        # Copy BED/BIM to LMM working dir (FAM gets phenotype attached below)
+        cp {input.bed} {output.bed_lmm}
+        cp {input.bim} {output.bim_lmm}
+
+        # Attach phenotype to FAM column 6 for GEMMA
+        python3 scripts/attach_pheno_to_fam.py \
+          {input.fam} \
+          {input.pheno} \
+          {output.fam_lmm}
+
+        gemma \
+          -bfile {params.outdir}/{params.prefix} \
+          -gk 1 \
+          -outdir {params.outdir} \
+          -o {params.prefix} \
+          2>&1 | tee {log}
+        """
+
+
+# ---------------------------------------------------------------------------
+# Step 4 — LMM association (GEMMA -lmm 4)
+# ---------------------------------------------------------------------------
+
+rule run_lmm:
+    input:
+        bed = "results/03_lmm/cfw_qc.bed",
+        bim = "results/03_lmm/cfw_qc.bim",
+        fam = "results/03_lmm/cfw_qc.fam",
+        kin = "results/03_lmm/cfw_qc.cXX.txt",
+    output:
+        assoc = "results/03_lmm/output/cfw_qc.assoc.txt",
+    params:
+        outdir = "results/03_lmm",
+        prefix = "cfw_qc",
+    log:
+        "logs/run_lmm.log",
+    conda:
+        "envs/gwas.yml",
+    shell:
+        """
+        gemma \
+          -bfile {params.outdir}/{params.prefix} \
+          -k {input.kin} \
+          -lmm 4 \
+          -outdir {params.outdir}/output \
+          -o {params.prefix} \
+          2>&1 | tee {log}
+        """
+
+
+# ---------------------------------------------------------------------------
+# Step 5 — Checkpoint: significance check
+# ---------------------------------------------------------------------------
+
+checkpoint check_significance:
+    input:
+        assoc = "results/03_lmm/output/cfw_qc.assoc.txt",
+        bim   = "results/02_qc/cfw_qc.bim",
+    output:
+        json  = "results/03_lmm/significance_check.json",
+    params:
+        bonf_alpha = config["thresholds"]["bonferroni_alpha"],
+        sugg_alpha = config["thresholds"]["suggestive_alpha"],
+    log:
+        "logs/check_significance.log",
+    conda:
+        "envs/gwas.yml",
+    script:
+        "scripts/check_significance.py"
+
+
+# ---------------------------------------------------------------------------
+# Branch A — GO / KEGG enrichment (has_hits = true)
+# ---------------------------------------------------------------------------
+
+rule go_enrichment:
+    input:
+        sig_json  = "results/03_lmm/significance_check.json",
+    output:
+        table     = "results/05_enrichment/go/enrichment_table.csv",
+        dotplot   = "results/05_enrichment/go/go_dotplot.png",
+        summary   = "results/05_enrichment/go/step_summary.txt",
+    params:
+        window_kb    = config["enrichment"]["window_kb"],
+        ontologies   = config["enrichment"]["go_ontologies"],
+        pval_cutoff  = config["enrichment"]["pval_cutoff"],
+        qval_cutoff  = config["enrichment"]["qval_cutoff"],
+    log:
+        "logs/go_enrichment.log",
+    conda:
+        "envs/gwas.yml",
+    script:
+        "scripts/go_enrichment.R"
+
+
+rule gene_overlap:
+    input:
+        sig_json = "results/03_lmm/significance_check.json",
+        enrich   = "results/05_enrichment/go/enrichment_table.csv",
+    output:
+        overlap  = "results/05_enrichment/catalog/catalog_overlap.csv",
+        narrative = "results/05_enrichment/catalog/biomni_narrative.md",
+    params:
+        window_kb = config["enrichment"]["window_kb"],
+    log:
+        "logs/gene_overlap.log",
+    conda:
+        "envs/biomni.yml",
+    script:
+        "scripts/gwas_catalog_overlap.py"
+
+
+# ---------------------------------------------------------------------------
+# Branch B — BSLMM (has_hits = false)
+# ---------------------------------------------------------------------------
+
+rule run_bslmm:
+    input:
+        bed = "results/03_lmm/cfw_qc.bed",
+        bim = "results/03_lmm/cfw_qc.bim",
+        fam = "results/03_lmm/cfw_qc.fam",
+        kin = "results/03_lmm/cfw_qc.cXX.txt",
+    output:
+        hyp     = "results/04_bslmm/output/cfw_qc.hyp.txt",
+        param   = "results/04_bslmm/output/cfw_qc.param.txt",
+    params:
+        burnin  = config["bslmm"]["burnin"],
+        sampling= config["bslmm"]["sampling"],
+        seed    = config["bslmm"]["seed"],
+        outdir  = "results/04_bslmm/output",
+        prefix  = "cfw_qc",
+        lmmdir  = "results/03_lmm",
+    log:
+        "logs/run_bslmm.log",
+    conda:
+        "envs/gwas.yml",
+    shell:
+        """
+        gemma \
+          -bfile {params.lmmdir}/{params.prefix} \
+          -k {input.kin} \
+          -bslmm 1 \
+          -w {params.burnin} \
+          -s {params.sampling} \
+          -seed {params.seed} \
+          -outdir {params.outdir} \
+          -o {params.prefix} \
+          2>&1 | tee {log}
+        """
+
+
+rule bslmm_interpret:
+    input:
+        hyp  = "results/04_bslmm/output/cfw_qc.hyp.txt",
+    output:
+        hyp_csv    = "results/04_bslmm/hyperparameters.csv",
+        arch_txt   = "results/04_bslmm/architecture_summary.txt",
+        trace_plot = "results/04_bslmm/trace_plots.png",
+    log:
+        "logs/bslmm_interpret.log",
+    conda:
+        "envs/gwas.yml",
+    script:
+        "scripts/bslmm_interpret.R"
+
+
+# ---------------------------------------------------------------------------
+# QC plots (always runs)
+# ---------------------------------------------------------------------------
+
+rule qc_plots:
+    input:
+        assoc = "results/03_lmm/output/cfw_qc.assoc.txt",
+        sig   = "results/03_lmm/significance_check.json",
+    output:
+        qq       = "results/06_qc_plots/qq_plot.png",
+        manhattan= "results/06_qc_plots/manhattan_plot.png",
+        density  = "results/06_qc_plots/snp_density.png",
+        lambda_txt="results/06_qc_plots/lambda.txt",
+    params:
+        lambda_warn = config["thresholds"]["lambda_warn"],
+    log:
+        "logs/qc_plots.log",
+    conda:
+        "envs/gwas.yml",
+    script:
+        "scripts/qc_plots.R"
+
+
+# ---------------------------------------------------------------------------
+# Step 7 — Annotate lead SNP loci with nearby genes (Ensembl REST)
+# ---------------------------------------------------------------------------
+
+rule annotate_loci:
+    input:
+        sig_json = "results/03_lmm/significance_check.json",
+    output:
+        tsv = "results/08_annotation/top_loci_genes.tsv",
+        md  = "results/08_annotation/annotation_summary.md",
+    params:
+        window_bp = config["enrichment"]["window_kb"] * 1000,
+    log:
+        "logs/annotate_loci.log",
+    conda:
+        "envs/gwas.yml",
+    script:
+        "scripts/annotate_top_loci.py"
+
+
+# ---------------------------------------------------------------------------
+# Biomni biological QC (always runs)
+# ---------------------------------------------------------------------------
+
+rule biomni_qc:
+    input:
+        pheno_summary = "results/01_phenotype/step_summary.txt",
+        assoc         = "results/03_lmm/output/cfw_qc.assoc.txt",
+    output:
+        report = "results/07_biomni_qc/biomni_qc_report.md",
+    log:
+        "logs/biomni_qc.log",
+    conda:
+        "envs/biomni.yml",
+    script:
+        "scripts/biomni_qc.py"
+
+
+# ---------------------------------------------------------------------------
+# Peer review (always runs last)
+# ---------------------------------------------------------------------------
+
+rule peer_review:
+    input:
+        sig_json     = "results/03_lmm/significance_check.json",
+        lambda_txt   = "results/06_qc_plots/lambda.txt",
+        biomni_report= "results/07_biomni_qc/biomni_qc_report.md",
+        branch_files = get_branch_outputs,
+        pheno_summary= "results/01_phenotype/step_summary.txt",
+        qc_summary   = "results/02_qc/qc_summary.txt",
+    output:
+        review   = "results/peer_review/review_report.md",
+        issues   = "results/peer_review/issues.json",
+        proposed = "results/peer_review/proposed_changes.md",
+    params:
+        model      = config["peer_review"]["model"],
+        max_tokens = config["peer_review"]["max_tokens"],
+        results_dir= "results",
+    log:
+        "logs/peer_review.log",
+    conda:
+        "envs/biomni.yml",
+    script:
+        "scripts/peer_review.py"

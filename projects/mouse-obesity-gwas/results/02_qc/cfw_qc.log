@@ -1,0 +1,40 @@
+PLINK v2.00a5.12 64-bit (25 Jun 2024)
+Options in effect:
+  --bfile data/cfw
+  --freq
+  --geno 0.05
+  --maf 0.05
+  --make-bed
+  --mind 0.3
+  --missing
+  --no-psam-pheno
+  --out results/02_qc/cfw_qc
+
+Hostname: Garrisons-MacBook-Air.local
+Working directory: /Users/garrisonfaridi/agent/bioinformatics-freelance/projects/mouse-obesity-gwas
+Start time: Tue Mar  3 12:56:37 2026
+
+Random number seed: 1772560597
+8192 MiB RAM detected; reserving 4096 MiB for main workspace.
+Using up to 8 compute threads.
+500 samples (0 females, 500 males; 500 founders) loaded from data/cfw.fam.
+92734 variants loaded from data/cfw.bim.
+Note: No phenotype data present.
+Calculating sample missingness rates... done.
+47 samples removed due to missing genotype data (--mind).
+IDs written to results/02_qc/cfw_qc.mindrem.id .
+453 samples (0 females, 453 males; 453 founders) remaining after main filters.
+Calculating allele frequencies... done.
+--freq: Allele frequencies (founders only) written to
+results/02_qc/cfw_qc.afreq .
+--missing: Sample missing data report written to results/02_qc/cfw_qc.smiss .
+--missing: Variant missing data report written to results/02_qc/cfw_qc.vmiss .
+--geno: 58413 variants removed due to missing genotype data.
+17611 variants removed due to allele frequency threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+16710 variants remaining after main filters.
+Writing results/02_qc/cfw_qc.fam ... done.
+Writing results/02_qc/cfw_qc.bim ... done.
+Writing results/02_qc/cfw_qc.bed ... done.
+
+End time: Tue Mar  3 12:56:37 2026

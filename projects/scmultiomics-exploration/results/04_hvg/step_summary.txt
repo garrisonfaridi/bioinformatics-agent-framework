@@ -1,0 +1,22 @@
+STEP 04: HIGHLY VARIABLE GENE SELECTION
+========================================
+
+Date: 2026-03-02 18:45:46
+
+Input: pbmc3k_normalized.h5ad (2638 cells × 13656 genes)
+
+Parameters:
+- Method: Seurat flavor
+- Number of top genes: 2000
+
+Results Summary:
+Identified 2000 highly variable genes using the Seurat method, which models the mean-variance 
+relationship across genes. These genes show high biological variability and are most informative 
+for distinguishing cell types. Top variable genes include SPARC, GNG11, PPBP, PF4, SDPR, 
+which are known markers for different blood cell populations. Downstream dimensionality reduction 
+will focus on these genes to capture the most relevant biological variation.
+
+Outputs:
+- 01_hvg_dispersion_plot.png: Mean-dispersion relationship with HVGs highlighted
+- 02_hvg_distribution.png: Distribution of gene variability metrics
+- highly_variable_genes.csv: List of HVGs with statistics

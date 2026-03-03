@@ -1,0 +1,142 @@
+
+================================================================================
+PBMC 3K SINGLE-CELL RNA-SEQ ANALYSIS - FINAL REPORT
+================================================================================
+
+Analysis Date: 2026-03-02 19:03:04
+Dataset: 10x Genomics PBMC 3k
+
+================================================================================
+ANALYSIS PIPELINE SUMMARY
+================================================================================
+
+Step 01: QUALITY CONTROL
+- Initial dataset: 2,700 cells × 32,738 genes
+- QC metrics calculated: total counts, genes detected, MT%
+- Mean counts per cell: 2,367
+- Mean genes per cell: 847
+- Mean MT%: 2.2%
+
+Step 02: FILTERING
+- Thresholds: min_genes=200, max_genes=2500, max_MT=5%
+- Cells retained: 2,638 (97.7%)
+- Genes retained: 13,656 (41.7%)
+
+Step 03: NORMALIZATION
+- Method: Total count normalization to 10,000 counts/cell
+- Transformation: log1p
+- Raw counts preserved in 'counts' layer
+
+Step 04: HIGHLY VARIABLE GENES
+- Method: Seurat flavor
+- HVGs identified: 2,000
+- Top HVGs: SPARC, GNG11, PPBP, PF4, SDPR
+
+Step 05: PRINCIPAL COMPONENT ANALYSIS
+- PCs computed: 50
+- PCs used for downstream: 30
+- Variance explained (PC1-30): 9.73%
+
+Step 06: UMAP EMBEDDING
+- Neighbors: 10
+- PCs used: 30
+- Clear cell population structure visible
+
+Step 07: CLUSTERING
+- Algorithm: Leiden
+- Resolution: 0.5
+- Clusters identified: 5
+
+Step 08: MARKER GENE IDENTIFICATION
+- Method: Wilcoxon rank-sum test
+- Top markers per cluster identified
+- Strong cluster-specific signatures
+
+Step 09: CELL TYPE ANNOTATION
+- All clusters successfully annotated
+- 5 major cell populations identified
+
+================================================================================
+IDENTIFIED CELL POPULATIONS
+================================================================================
+
+Cluster Cell_Type  N_Cells  Percentage
+      0   T cells     1125   42.645944
+      1 Monocytes      667   25.284306
+      2  NK cells      481   18.233510
+      3   B cells      340   12.888552
+      4 Platelets       25    0.947688
+
+================================================================================
+CELL TYPE DESCRIPTIONS
+================================================================================
+
+1. T CELLS (42.6%, n=1,125)
+   - Markers: CD3D, CD3E, IL7R, LTB
+   - Description: The most abundant population, representing various T cell subsets
+   - Function: Adaptive immunity, cell-mediated immune response
+
+2. MONOCYTES (25.3%, n=667)
+   - Markers: CD14, S100A9, FCN1, CST3
+   - Description: Myeloid cells involved in innate immunity
+   - Function: Phagocytosis, antigen presentation, inflammation
+
+3. NK CELLS (18.2%, n=481)
+   - Markers: NKG7, GZMA, PRF1, GNLY
+   - Description: Natural killer cells with cytotoxic activity
+   - Function: Innate immunity, tumor surveillance, viral defense
+
+4. B CELLS (12.9%, n=340)
+   - Markers: CD79A, MS4A1, CD79B
+   - Description: Lymphocytes responsible for antibody production
+   - Function: Humoral immunity, antibody production
+
+5. PLATELETS (0.9%, n=25)
+   - Markers: PPBP, PF4, GNG11
+   - Description: Small population likely from sample preparation
+   - Function: Blood clotting, wound healing
+
+================================================================================
+KEY FINDINGS
+================================================================================
+
+1. Cell Composition: The PBMC sample shows typical composition with T cells as
+   the dominant population, followed by monocytes and NK cells.
+
+2. Data Quality: High-quality dataset with low mitochondrial content (2.2% mean)
+   and good gene detection (847 genes/cell mean).
+
+3. Cell Type Separation: Clear separation of major PBMC populations in UMAP space,
+   indicating distinct transcriptional programs.
+
+4. Marker Expression: Strong, specific marker gene expression confirms accurate
+   cell type identification.
+
+5. Biological Relevance: Identified populations match expected PBMC composition
+   and express canonical markers for each cell type.
+
+================================================================================
+OUTPUT FILES
+================================================================================
+
+All results are organized in step-specific directories:
+- 01_qc/: QC metrics and plots
+- 02_filtering/: Filtering statistics
+- 03_normalization/: Normalization comparison
+- 04_hvg/: Highly variable genes
+- 05_pca/: PCA analysis
+- 06_umap/: UMAP embeddings
+- 07_clustering/: Cluster assignments
+- 08_markers/: Marker genes
+- 09_annotation/: Cell type annotations
+- data/: All AnnData objects
+
+Key Files:
+- pbmc3k_annotated.h5ad: Final annotated dataset
+- cell_annotations.csv: Cell type summary
+- per_cell_annotations.csv: Per-cell labels
+- markers.csv: Complete marker gene list
+
+================================================================================
+ANALYSIS COMPLETE
+================================================================================

@@ -1,0 +1,53 @@
+# [Project Title] — WGS/WES Variant Calling Pipeline (Nextflow)
+
+## Description
+
+[2–3 sentence description of the project, client, biological question, cohort details, and genome build.]
+
+## Requirements
+
+- Nextflow ≥23.10
+- Docker or Singularity
+- ≥64 GB RAM (for BWA-MEM2 index + GATK)
+- Pre-downloaded VEP cache (`data/ref/vep_cache/`)
+
+## Usage
+
+```bash
+# 1. Edit config
+cp config/samplesheet.csv.template config/samplesheet.csv
+# fill in sample names and FASTQ paths
+
+# 2. Run (local with Docker)
+nextflow run main.nf -profile docker --outdir results
+
+# 3. Run (HPC with Singularity + SLURM)
+nextflow run main.nf -profile singularity,slurm --outdir results
+```
+
+## Inputs
+
+| File | Description |
+|------|-------------|
+| `config/samplesheet.csv` | sample, fastq_1, fastq_2, sex (optional) |
+| `data/ref/GRCh38.fa` | Reference genome FASTA |
+| `data/ref/known_sites/` | dbSNP, Mills, 1000G VCFs for BQSR |
+| `data/ref/vep_cache/` | Pre-downloaded Ensembl VEP cache |
+
+## Outputs
+
+| Directory | Contents |
+|-----------|----------|
+| `results/alignment/` | Sorted, deduped, BQSR BAMs |
+| `results/gvcf/` | Per-sample GVCFs |
+| `results/vcf/` | Filtered joint VCFs |
+| `results/annotation/` | VEP-annotated VCFs + summary HTML |
+| `results/qc/` | Picard metrics, MultiQC HTML |
+
+## Methods
+
+See `METHODS.md` for publishable methods text.
+
+## Contact
+
+[Your name] — [email]

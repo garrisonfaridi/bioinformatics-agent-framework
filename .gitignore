@@ -1,0 +1,17 @@
+# Large binary data — regenerate from scripts, do not commit
+results/data/
+data/
+biomni_data/
+logs/
+.snakemake/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# System
+.DS_Store
+Thumbs.db

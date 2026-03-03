@@ -1,0 +1,22 @@
+# Raw genotype data (14 GB — download via scripts/download_data.py)
+data/
+
+# Snakemake cache
+.snakemake/
+
+# Log files
+logs/
+
+# Binary genotype files (regenerable from data/)
+results/02_qc/*.bed
+results/02_qc/*.afreq
+results/02_qc/*.vmiss
+results/03_lmm/*.bed
+results/03_lmm/*.bim
+results/03_lmm/*.fam
+results/03_lmm/*.cXX.txt
+
+# BSLMM per-SNP posteriors (large, regenerable — summary in hyperparameters.csv)
+results/04_bslmm/output/*.gamma.txt
+results/04_bslmm/output/*.param.txt
+results/04_bslmm/output/*.bv.txt

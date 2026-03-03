@@ -1,0 +1,9 @@
+Total input SNPs (before variant QC) : 92734
+  SNPs passing MAF > 0.05             : 61954 (from pre-filter set)
+  SNPs passing geno <= 5%             : 34321 (from pre-filter set)
+Final retained SNPs (MAF+geno combined): 16710
+
+Total input samples                   : 500
+Samples removed (mind > 30%)           : 47
+Final retained samples                 : 453
+Cohort sex composition                 : 453 male, 0 female, 0 unknown

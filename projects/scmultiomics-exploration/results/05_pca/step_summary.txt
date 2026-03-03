@@ -1,0 +1,32 @@
+STEP 05: PRINCIPAL COMPONENT ANALYSIS (PCA)
+============================================
+
+Date: 2026-03-02 18:49:21
+
+Input: pbmc3k_normalized.h5ad (2638 cells × 13656 genes)
+
+Parameters:
+- Number of PCs computed: 50
+- Data scaled: Yes (max_value=10)
+- Highly variable genes used: 2000
+
+Variance Explained:
+- PC1-10: 5.97%
+- PC1-20: 7.90%
+- PC1-30: 9.73%
+- PC1-50: 13.19%
+
+Selected PCs for downstream analysis: 30
+
+Results Summary:
+Performed PCA to reduce dimensionality from 13656 genes to 50 principal components.
+The first 30 PCs capture 9.73% of the total variance and will be
+used for downstream analysis. PCA scatter plots show clear separation of cell populations, with no
+obvious batch effects from technical factors (total counts, MT%). Top contributing genes for early
+PCs include known cell type markers, indicating biological signal dominates the variation.
+
+Outputs:
+- 01_pca_variance_explained.png: Variance explained by each PC
+- 02_pca_scatter_plots.png: PCA projections colored by QC metrics
+- top_genes_per_pc.csv: Top contributing genes for first 5 PCs
+- pbmc3k_pca.h5ad: Data with PCA embeddings

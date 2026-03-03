@@ -1,0 +1,18 @@
+name: gwas
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - plink2=2.00a5.12
+  - gemma=0.98.5
+  - r-base=4.3.3
+  - r-qqman=0.1.9
+  - bioconductor-clusterprofiler=4.10.0
+  - bioconductor-org.mm.eg.db=3.18.0
+  - r-jsonlite=1.8.8
+  - r-data.table=1.15.4
+  - python=3.11
+  - requests=2.31.0
+  - pandas=2.1.0
+  - numpy=1.26.0

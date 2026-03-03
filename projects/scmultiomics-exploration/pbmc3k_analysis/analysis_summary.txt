@@ -1,0 +1,113 @@
+
+================================================================================
+PBMC 3k scRNA-seq Analysis Summary Report
+================================================================================
+
+DATASET INFORMATION:
+-------------------
+- Dataset: 10x Genomics PBMC 3k
+- Original cells: 2,700
+- Cells after QC filtering: 1,703
+- Original genes: 32,738
+- Genes after filtering: 12,359
+- Highly variable genes: 1,605
+
+QC FILTERING CRITERIA:
+---------------------
+- Minimum genes per cell: 200
+- Maximum total counts: 2,500
+- Maximum mitochondrial percentage: 5%
+- Minimum cells per gene: 3
+
+ANALYSIS PARAMETERS:
+-------------------
+- Normalization: Total count normalization to 10,000
+- Transformation: log(x+1)
+- PCA components: 50 (using 40 for neighbors)
+- Neighbors: 10
+- Clustering method: Leiden
+- Clustering resolution: 0.5
+- Number of clusters identified: 5
+
+IDENTIFIED CELL POPULATIONS:
+---------------------------
+
+CD4+ T cells:
+  - Count: 730 cells
+  - Percentage: 42.9%
+  - Top markers: LDHB, RPS12, RPS25, RPS14, RPS6
+
+NK cells:
+  - Count: 391 cells
+  - Percentage: 23.0%
+  - Top markers: NKG7, CST7, GZMA, B2M, CTSW
+
+Monocytes:
+  - Count: 284 cells
+  - Percentage: 16.7%
+  - Top markers: FTL, FTH1, LYZ, CST3, S100A9
+
+B cells:
+  - Count: 284 cells
+  - Percentage: 16.7%
+  - Top markers: CD74, HLA-DRA, HLA-DPB1, CD79A, HLA-DRB1
+
+Megakaryocytes:
+  - Count: 14 cells
+  - Percentage: 0.8%
+  - Top markers: PPBP, GPX1, MYL6, CALM3, SH3BGRL3
+
+
+KEY FINDINGS:
+------------
+1. CD4+ T cells are the most abundant population (42.9%)
+2. NK cells represent 23.0% of the population
+3. Monocytes and B cells each constitute approximately 16.7% 
+4. A small population of Megakaryocytes (0.8%) was detected
+5. All populations show distinct marker gene expression patterns
+
+BIOLOGICAL INTERPRETATION:
+-------------------------
+The PBMC 3k dataset shows a typical peripheral blood mononuclear cell composition:
+- Lymphoid cells (T cells, NK cells, B cells): ~82.5%
+- Myeloid cells (Monocytes): ~16.7%
+- Other (Megakaryocytes): ~0.8%
+
+The high proportion of CD4+ T cells is consistent with healthy PBMC composition.
+NK cells show strong cytotoxic markers (NKG7, GZMA, GNLY).
+Monocytes express typical inflammatory markers (LYZ, S100A9).
+B cells show clear immunoglobulin and HLA class II expression.
+
+OUTPUT FILES:
+------------
+All results saved to: pbmc3k_analysis/
+
+Plots (19 total):
+  01_qc_metrics_before_filtering.png - QC distributions
+  02_qc_violin.png - QC violin plots
+  03_hvg.png - Highly variable genes
+  04_pca_variance.png - PCA variance explained
+  05_pca_colored_by_counts.png - PCA plot
+  06_pca_scatter.png - PCA scatter matrix
+  07_umap_qc_metrics.png - UMAP colored by QC
+  08_umap_leiden_clusters.png - UMAP with clusters
+  09_marker_genes_ranking.png - Marker gene rankings
+  10_marker_genes_dotplot.png - Marker genes dotplot
+  11_marker_genes_heatmap.png - Marker genes heatmap
+  12_marker_genes_violin.png - Marker genes violin
+  13_canonical_markers_umap.png - Canonical markers on UMAP
+  14_canonical_markers_dotplot.png - Canonical markers dotplot
+  15_umap_cell_types.png - UMAP with cell types
+  16_umap_comparison.png - Clusters vs cell types
+  17_cell_type_markers_dotplot.png - Cell type markers
+  18_cell_type_composition.png - Composition bar plots
+  19_cell_type_pie_chart.png - Composition pie chart
+
+Data files:
+  pbmc3k_annotated.h5ad - Annotated AnnData object
+  cluster_marker_genes.csv - Marker genes per cluster
+  cell_annotations.csv - Cell-level annotations
+
+================================================================================
+Analysis completed successfully!
+================================================================================

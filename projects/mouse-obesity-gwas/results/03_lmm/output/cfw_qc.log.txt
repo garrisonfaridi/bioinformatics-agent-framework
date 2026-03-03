@@ -1,0 +1,37 @@
+##
+## GEMMA Version    = 0.98.5 (2021-08-25)
+## Build profile    = /gnu/store/8rvid272yb53bgascf5c468z0jhsyflj-profile
+## GCC version      = 4.2.1
+## GSL Version      = 2.8
+## OpenBlas         = OpenBLAS 0.3.29  - OpenBLAS 0.3.30 DYNAMIC_ARCH NO_AFFINITY USE_OPENMP Nehalem MAX_THREADS=128
+##   arch           = Nehalem
+##   threads        = 1
+##   parallel type  = openmp
+##
+## Command Line Input = gemma -bfile results/03_lmm/cfw_qc -k results/03_lmm/cfw_qc.cXX.txt -lmm 4 -outdir results/03_lmm/output -o cfw_qc 
+##
+## Date = Tue Mar  3 13:03:42 2026
+##
+## Summary Statistics:
+## number of total individuals = 453
+## number of analyzed individuals = 453
+## number of covariates = 1
+## number of phenotypes = 1
+## number of total SNPs/var = 16710
+## number of analyzed SNPs/var = 16710
+## REMLE log-likelihood in the null model = -4078.46
+## MLE log-likelihood in the null model = -4086.98
+## pve estimate in the null model = 2.7501e-06
+## se(pve) in the null model = 0.0719932
+## vg estimate in the null model = 40.2642
+## ve estimate in the null model = 4.02642e+06
+## beta estimate in the null model =   -419.383
+## se(beta) =   94.278
+##
+## Computation Time:
+## total computation time = 0.0836442 min 
+## computation time break down: 
+##      time on eigen-decomposition = 0.000693783 min 
+##      time on calculating UtX = 0.00620577 min 
+##      time on optimization = 0.0690386 min 
+##

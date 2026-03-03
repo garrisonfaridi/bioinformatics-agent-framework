@@ -1,0 +1,64 @@
+name: bioinfo-base
+
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  # Core language
+  - python=3.11
+  - r-base>=4.4
+
+  # Pipeline frameworks
+  - nextflow>=23.10
+  - snakemake>=8.0
+
+  # Alignment & processing
+  - samtools>=1.19
+  - bcftools>=1.19
+  - bedtools>=2.31
+  - bwa-mem2>=2.2.1
+  - star>=2.7.11a
+  - salmon>=1.10
+  - fastqc>=0.12
+  - fastp>=0.23
+
+  # QC aggregation
+  - multiqc>=1.21
+
+  # Variant calling
+  - gatk4>=4.5
+  - picard>=3.1
+
+  # R packages (Bioconductor) — SingleR installed via BiocManager in R
+  - bioconductor-deseq2
+  - bioconductor-edger
+  - bioconductor-limma
+  - r-seurat
+  - bioconductor-scdblfinder
+
+  # R utilities
+  - r-tidyverse
+  - r-ggplot2
+  - r-patchwork
+  - r-pheatmap
+  - r-renv
+
+  # Python utilities
+  - jupyter
+  - jupyterlab
+
+  # Python data science (conda builds — avoid pip source builds)
+  - pandas>=2.0
+  - numpy>=1.26
+  - scipy>=1.11
+  - matplotlib>=3.8
+  - seaborn>=0.13
+  - scanpy>=1.10
+  - anndata>=0.10
+
+  - pip
+  - pip:
+    - scrublet>=0.2.3
+    - biomni

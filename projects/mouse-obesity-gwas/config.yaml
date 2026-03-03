@@ -1,0 +1,38 @@
+dataset:
+  dryad_doi: "10.5061/dryad.2rs41"
+  files:
+    - cfw.bed
+    - cfw.bim
+    - cfw.fam
+    - pheno.csv
+  pilot_n: 500           # pre-QC subset; ~63% pass --mind 0.30 → ~315 post-QC samples
+
+phenotype:
+  column: "sacweight"    # sacrifice body weight — confirmed column name in pheno.csv
+  transform: "inverse_normal"   # INT applied before association
+
+thresholds:
+  maf: 0.05
+  geno: 0.05
+  mind: 0.30             # CFW MegaMUGA data has ~20% median missingness; 0.10 removes 99% of samples
+  bonferroni_alpha: 0.05  # divided by n_snps_post_qc at runtime
+  suggestive_alpha: 1.0   # 1 expected false positive per genome scan
+  lambda_warn: 1.10       # flag QQ inflation above this
+
+bslmm:
+  burnin: 10000
+  sampling: 10000
+  seed: 42
+
+enrichment:
+  window_kb: 500          # ±500 kb around each lead SNP for gene extraction
+  go_ontologies:
+    - BP
+    - MF
+    - CC
+  pval_cutoff: 0.05
+  qval_cutoff: 0.2
+
+peer_review:
+  model: "claude-opus-4-6"
+  max_tokens: 8192

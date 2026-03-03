@@ -1,0 +1,24 @@
+STEP 02: FILTERING
+==================
+
+Date: 2026-03-02 18:41:27
+
+Input: pbmc3k_raw.h5ad (2700 cells × 32738 genes)
+
+Filtering Thresholds:
+- Minimum genes per cell: 200
+- Maximum genes per cell: 2500
+- Maximum MT percentage: 5%
+- Minimum cells per gene: 3
+
+Results Summary:
+Applied quality control filters to remove low-quality cells and unexpressed genes. 
+Retained 2638 cells (97.7%) and 13656 genes 
+(41.7%). Removed 62 cells primarily 
+due to high mitochondrial content (>5%), which indicates stressed or dying cells. Gene filtering 
+removed lowly expressed genes, reducing dimensionality for downstream analysis.
+
+Outputs:
+- filtering_summary.csv: Step-by-step filtering statistics
+- 01_filtering_results.png: QC metric distributions after filtering
+- pbmc3k_filtered.h5ad: Filtered AnnData object

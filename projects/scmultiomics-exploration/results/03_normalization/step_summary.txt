@@ -1,0 +1,27 @@
+STEP 03: NORMALIZATION
+======================
+
+Date: 2026-03-02 18:43:53
+
+Input: pbmc3k_filtered.h5ad (2638 cells × 13656 genes)
+
+Parameters:
+- Normalization method: Total count normalization
+- Target sum: 10,000 counts per cell
+- Transformation: log1p (natural logarithm + 1)
+
+Post-normalization Statistics:
+- Mean expression: 0.1559
+- Std expression: 0.6096
+- Min expression: 0.0000
+- Max expression: 3.9192
+
+Results Summary:
+Successfully normalized gene expression data to account for sequencing depth differences between cells.
+Each cell was scaled to have a total count of 10,000, followed by log1p transformation to stabilize
+variance and make the data more normally distributed. Raw counts were preserved in the 'counts' layer
+for future reference. This normalization enables fair comparison of gene expression across cells.
+
+Outputs:
+- 01_normalization_comparison.png: Comparison of raw vs normalized distributions
+- pbmc3k_normalized.h5ad: Normalized AnnData object

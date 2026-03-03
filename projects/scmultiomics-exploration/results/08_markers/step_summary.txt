@@ -1,0 +1,32 @@
+STEP 08: MARKER GENE IDENTIFICATION
+====================================
+
+Date: 2026-03-02 18:57:23
+
+Input: pbmc3k_clustered.h5ad (2638 cells × 13656 genes)
+
+Parameters:
+- Method: Wilcoxon rank-sum test
+- Number of clusters: 5
+- Top genes shown: 10 per cluster
+
+Top Markers by Cluster:
+- Cluster 0: CD3D, LDHB, CD3E, IL32, IL7R (T cells)
+- Cluster 1: LST1, CST3, TYROBP, S100A9, FCN1 (Monocytes)
+- Cluster 2: NKG7, CST7, GZMA, CCL5, CTSW (NK cells)
+- Cluster 3: CD79A, CD79B, HLA-DQA1, MS4A1 (B cells)
+- Cluster 4: PPBP, PF4, SDPR, RGS18 (Platelets)
+
+Results Summary:
+Identified differentially expressed marker genes for each cluster using Wilcoxon rank-sum test.
+Markers show strong cluster specificity with high statistical significance (p-adj < 1e-6 for top
+markers). Gene expression patterns clearly distinguish major PBMC populations: T cells (CD3D+),
+monocytes (CD14+, S100A9+), NK cells (NKG7+), B cells (CD79A+), and platelets (PPBP+). These
+markers will guide cell type annotation in the next step.
+
+Outputs:
+- 01_marker_ranking.png: Top 20 markers per cluster
+- 02_marker_dotplot.png: Dot plot of marker expression
+- 03_marker_heatmap.png: Heatmap of top 10 markers per cluster
+- 04_key_marker_violins.png: Violin plots of key markers
+- markers.csv: Complete list of markers with statistics

@@ -1,0 +1,28 @@
+=== BSLMM Genetic Architecture Summary ===
+PVE  (proportion of variance explained): 0.0528 [95% CI: 0.0016, 0.1844]
+PGE  (proportion due to sparse effects): 0.5085 [95% CI: 0.0341, 0.9814]
+n_γ  (expected number of sparse loci):  16.7
+
+=== Architecture Interpretation ===
+CONCLUSION: Point estimate suggests moderate sparse component (PVE = 0.053, PGE = 0.51),
+  but posteriors are largely uninformative — see CAVEAT below.
+  - Approximately 17 genomic loci estimated in sparse component (95% CI: 6–34).
+
+  CAVEAT — Posterior credible intervals are nearly uninformative:
+  - PGE 95% CI: [0.034, 0.981] — spans essentially the full [0, 1] range.
+  - PVE 95% CI: [0.0016, 0.1844] — consistent with near-zero to moderate heritability.
+  - These wide CIs reflect the pilot sample size (N~300) rather than true
+    genetic architecture. The MCMC cannot distinguish sparse from polygenic models.
+
+  LITERATURE COMPARISON:
+  - Observed PVE = 0.053 is 4–8x lower than published CFW body weight
+    SNP-heritability: h² = 0.20–0.40 (Parker et al. 2016 Nat Genet; Nicod et al. 2016).
+  - This likely reflects: (1) reduced power from pilot N vs full N=1,200;
+    (2) reduced SNP panel (16,710 vs 92K input); (3) uninformative MCMC priors
+    at this sample size. Do NOT interpret low PVE as evidence of low heritability.
+
+  RECOMMENDATIONS:
+  1. Run 2–3 independent MCMC chains with different seeds; compute Gelman-Rubin
+     Rhat and effective sample size (ESS) before drawing architectural conclusions.
+  2. Re-run BSLMM with full N=1,200 dataset for informative posteriors.
+  3. Use polygenic score approach rather than sparse-loci mapping at this N.

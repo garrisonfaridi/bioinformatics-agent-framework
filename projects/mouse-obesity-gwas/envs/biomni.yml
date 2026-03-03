@@ -1,0 +1,8 @@
+name: biomni-gwas
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip:
+    - anthropic>=0.40
+    - biomni>=0.0.8

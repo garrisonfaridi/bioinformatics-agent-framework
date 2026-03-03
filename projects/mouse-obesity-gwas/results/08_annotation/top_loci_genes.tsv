@@ -1,0 +1,3 @@
+snp	chr	ps	p_wald	gene_name	gene_id	biotype	gene_start	gene_end	distance_bp
+cfw-15-47930863	15	47930863	2.105933e-05	Csmd3	ENSMUSG00000022311	protein_coding	47444033.0	48655459.0	118883.0
+rs31551218	15	46034785	2.8752e-05	NONE	NONE	NONE			

@@ -1,0 +1,49 @@
+##
+## GEMMA Version    = 0.98.5 (2021-08-25)
+## Build profile    = /gnu/store/8rvid272yb53bgascf5c468z0jhsyflj-profile
+## GCC version      = 4.2.1
+## GSL Version      = 2.8
+## OpenBlas         = OpenBLAS 0.3.29  - OpenBLAS 0.3.30 DYNAMIC_ARCH NO_AFFINITY USE_OPENMP Nehalem MAX_THREADS=128
+##   arch           = Nehalem
+##   threads        = 1
+##   parallel type  = openmp
+##
+## Command Line Input = gemma -bfile results/03_lmm/cfw_qc -k results/03_lmm/cfw_qc.cXX.txt -bslmm 1 -w 10000 -s 10000 -seed 42 -outdir results/04_bslmm/output -o cfw_qc 
+##
+## Date = Tue Mar  3 13:04:10 2026
+##
+## Summary Statistics:
+## number of total individuals = 453
+## number of analyzed individuals = 453
+## number of covariates = 1
+## number of phenotypes = 1
+## number of total SNPs/var = 16710
+## number of analyzed SNPs/var = 16710
+## REMLE log-likelihood in the null model = -4078.46
+## MLE log-likelihood in the null model = -4086.98
+## pve estimate in the null model = 2.7501e-06
+## se(pve) in the null model = 0.072002
+## vg estimate in the null model = 2.54756e+89
+## ve estimate in the null model = -1.05612e-226
+## beta estimate in the null model = 
+## se(beta) = 
+## estimated mean = -419.383
+##
+## MCMC related:
+## initial value of h = 2.7501e-06
+## initial value of rho = 1
+## initial value of pi = 0.000598444
+## initial value of |gamma| = 10
+## random seed = 42
+## acceptance ratio = 0.22415
+##
+## Computation Time:
+## total computation time = 0.0694409 min 
+## computation time break down: 
+##      time on calculating relatedness matrix = 0 min 
+##      time on eigen-decomposition = 0.000746283 min 
+##      time on calculating UtX = 0.00648622 min 
+##      time on proposal = 0.0257236 min 
+##      time on mcmc = 0.0558415 min 
+##      time on Omega = 0.00981765 min 
+##

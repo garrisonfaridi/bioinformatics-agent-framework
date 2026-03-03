@@ -1,0 +1,7 @@
+Step,Cells,Genes
+Initial,2700,32738
+Min genes (>200),2700,32738
+Max genes (<2500),2695,32738
+MT% (<5%),2638,32738
+Gene filter (≥3 cells),2638,13656
+Final,2638,13656

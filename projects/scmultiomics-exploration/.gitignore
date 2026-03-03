@@ -1,0 +1,25 @@
+# Large binary data — regenerate from scripts, do not commit
+results/data/
+data/
+biomni_data/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Large binary analysis objects (regenerable)
+*.h5ad
+*.h5
+*.loom
+
+# R artifacts
+.Rhistory
+.RData

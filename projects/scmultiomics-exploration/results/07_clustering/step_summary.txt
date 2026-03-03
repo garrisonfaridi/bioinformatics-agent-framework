@@ -1,0 +1,33 @@
+STEP 07: LEIDEN CLUSTERING
+===========================
+
+Date: 2026-03-02 18:53:27
+
+Input: pbmc3k_umap.h5ad (2638 cells × 13656 genes)
+
+Parameters:
+- Clustering algorithm: Leiden
+- Resolution: 0.5
+- Number of neighbors: 10
+
+Results Summary:
+Performed Leiden clustering on the neighborhood graph, identifying 5 distinct clusters.
+Cluster sizes range from 25 to 1125 cells.
+The largest cluster (Cluster 0) contains 42.6% of cells, while
+the smallest (Cluster 4) contains 0.9%.
+Clusters show clear spatial separation in UMAP space, suggesting distinct cell populations.
+Ready for marker gene identification and cell type annotation.
+
+Cluster Distribution:
+Cluster  N_cells  Percentage
+      0     1125       42.65
+      1      667       25.28
+      2      481       18.23
+      3      340       12.89
+      4       25        0.95
+
+Outputs:
+- 01_umap_clusters.png: UMAP with cluster labels
+- 02_cluster_composition.png: Cluster sizes and proportions
+- cluster_sizes.csv: Detailed cluster statistics
+- pbmc3k_clustered.h5ad: Data with cluster assignments

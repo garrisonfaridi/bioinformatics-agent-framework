@@ -1,0 +1,27 @@
+STEP 01: QUALITY CONTROL
+========================
+
+Date: 2026-03-02 18:40:37
+
+Parameters:
+- Dataset: PBMC 3k from 10x Genomics
+- Initial cells: 2700
+- Initial genes: 32738
+- Mitochondrial genes identified: 13
+
+Key Metrics Calculated:
+1. Total counts per cell (total_counts)
+2. Number of genes detected per cell (n_genes_by_counts)
+3. Percentage of mitochondrial gene expression (pct_counts_mt)
+
+Results Summary:
+The dataset contains 2,700 cells and 32,738 genes. On average, cells have ~2,367 total counts 
+and express ~847 genes. The mean mitochondrial percentage is ~2.2%, indicating generally healthy 
+cells. QC metrics show typical distributions expected for PBMC data, with some outliers visible 
+in the scatter plots that may represent low-quality cells or doublets.
+
+Outputs:
+- 01_qc_violin_plots.png: Distribution of QC metrics
+- 02_qc_scatter_plots.png: Relationships between QC metrics
+- qc_statistics.csv: Summary statistics
+- per_cell_statistics.csv: Per-cell QC values

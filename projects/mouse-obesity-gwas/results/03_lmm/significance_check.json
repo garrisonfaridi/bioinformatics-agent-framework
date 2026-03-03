@@ -1,0 +1,22 @@
+{
+  "has_hits": false,
+  "n_bonferroni": 0,
+  "n_suggestive": 4,
+  "n_snps_post_qc": 16710,
+  "threshold_bonferroni": 2.9922202274087376e-06,
+  "threshold_suggestive": 5.984440454817474e-05,
+  "lead_snps": [
+    {
+      "rsid": "cfw-15-47930863",
+      "chr": 15,
+      "ps": 47930863,
+      "p_wald": 2.105933e-05
+    },
+    {
+      "rsid": "rs31551218",
+      "chr": 15,
+      "ps": 46034785,
+      "p_wald": 2.8752e-05
+    }
+  ]
+}

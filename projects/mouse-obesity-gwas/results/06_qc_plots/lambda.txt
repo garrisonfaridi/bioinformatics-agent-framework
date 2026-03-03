@@ -1,0 +1,3 @@
+lambda_GC    = 1.0935
+n_snps       = 16710
+warning      = NO

@@ -1,0 +1,8 @@
+Phenotype column  : sacweight
+Transform applied : inverse_normal
+N samples (FAM)   : 500
+N missing pheno   : 19
+N valid pheno     : 481
+Raw BW mean±SD    : 38.41 ± 4.74 g
+Raw BW range      : 25.00 – 53.20 g
+INT BW mean±SD    : 0.0000 ± 0.9995

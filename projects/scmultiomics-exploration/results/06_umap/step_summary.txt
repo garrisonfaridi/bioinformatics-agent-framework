@@ -1,0 +1,23 @@
+STEP 06: UMAP EMBEDDING
+========================
+
+Date: 2026-03-02 18:50:52
+
+Input: pbmc3k_pca.h5ad (2638 cells × 13656 genes)
+
+Parameters:
+- Number of PCs used: 30
+- Number of neighbors: 10
+- UMAP parameters: default
+
+Results Summary:
+Computed UMAP embedding for visualization of cell relationships in 2D space. First built a 
+neighborhood graph using the top 30 principal components, then applied UMAP to project 
+cells into 2D while preserving local structure. The UMAP shows distinct clusters of cells, 
+suggesting multiple cell populations. QC metrics (total counts, genes detected, MT%) show 
+relatively uniform distribution across the UMAP, indicating no strong technical confounders 
+driving the separation. Ready for clustering analysis.
+
+Outputs:
+- 01_umap_qc_metrics.png: UMAP colored by QC metrics
+- pbmc3k_umap.h5ad: Data with UMAP coordinates

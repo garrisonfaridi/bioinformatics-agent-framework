@@ -1,0 +1,17 @@
+results/
+logs/
+work/
+*.h5ad
+*.loom
+*.bam
+*.bai
+*.fastq.gz
+*.fq.gz
+data/raw/
+data/ref/
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+*.tmp
+.DS_Store
