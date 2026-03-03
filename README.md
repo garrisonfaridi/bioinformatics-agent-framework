@@ -186,13 +186,25 @@ Then restart Claude Code. Verify with `claude mcp list`.
 
 ### 3. Configure CLAUDE.md
 
-Copy `knowhow/` to a location of your choice and update the `@file` paths in your `~/.claude/CLAUDE.md`
-to point to the relevant docs for your workflow. The provided `CLAUDE.md` template covers:
+A `CLAUDE.md` template is included at the repo root. Copy it to your preferred location
+(`~/agent/CLAUDE.md` or `~/.claude/CLAUDE.md`) and replace the bracketed fields:
 
+```bash
+cp CLAUDE.md ~/agent/CLAUDE.md   # or ~/.claude/CLAUDE.md for global scope
+```
+
+Fields to customize:
+- `[YOUR_DEGREE_AND_SPECIALTY]` — your background
+- `[YOUR_PRIMARY_WORKFLOWS]` — the analysis types you run most
+- `[PATH_TO_KNOWHOW]` — absolute path to your `knowhow/` directory
+- `[PATH_TO_REPO]` — absolute path to this repo root
+
+The template covers:
 - Background (your specialty areas and languages)
 - Hard rules (pin versions, use containers, random seeds, README+methods per project)
 - Tool preferences table
 - Biomni invocation patterns
+- Sequential thinking protocol with mandatory trigger rules
 - Three-phase model selection protocol
 - Know-how doc references
 
