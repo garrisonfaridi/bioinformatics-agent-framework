@@ -58,18 +58,28 @@ a reproducible, peer-reviewed analysis pipeline.
               │  Makes reasoning explicit and    │
               │  revisable — not buried in       │
               │  inline inference                │
-              └────────────────┬────────────────┘
-                               │
-   ┌───────────────────────────▼─────────────────────────────────┐
-   │                    Snakemake Pipeline                        │
-   │                                                              │
-   │  QC → Kinship → LMM → [checkpoint] → Branch A (enrichment) │
-   │                                    → Branch B (BSLMM)       │
-   │                                                              │
-   │              ↓  (always runs last)                           │
-   │         Claude Opus Peer Review                              │
-   │   (review_report.md, proposed_changes.md)                    │
-   └──────────────────────────────────────────────────────────────┘
+              └──────────┬──────────────┬──────────────┬──────────┘
+                         │              │              │
+          ┌──────────────▼──┐  ┌────────▼────────┐  ┌▼────────────────┐
+          │ Nextflow DSL2   │  │    Snakemake     │  │   Python / R    │
+          │   Pipeline      │  │    Pipeline      │  │    Pipeline     │
+          │                 │  │                  │  │                 │
+          │ STAR + salmon   │  │ QC → Kinship     │  │ scanpy / Seurat │
+          │ BWA-MEM2 + GATK │  │ → LMM →          │  │ DESeq2 / edgeR  │
+          │ nf-core modules │  │ [checkpoint]     │  │ custom analysis │
+          │ containerized   │  │ enrichment /     │  │ ad-hoc scripts  │
+          │ processes       │  │ BSLMM            │  │                 │
+          └────────┬────────┘  └────────┬─────────┘  └───────┬─────────┘
+                   │                    │                     │
+                   └────────────────────┼─────────────────────┘
+                                        │
+                          ┌─────────────▼─────────────┐
+                          │   Claude Opus Peer Review  │
+                          │   (always runs last)       │
+                          │                            │
+                          │  review_report.md          │
+                          │  proposed_changes.md       │
+                          └────────────────────────────┘
 ```
 
 ### Three-Phase AI Workflow
