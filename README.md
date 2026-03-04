@@ -113,24 +113,55 @@ these conditions are met:
 ```
 bioinformatics-freelance/
 ├── README.md                    # this file
-├── base-env.yml                 # base conda environment (Python 3.11, R 4.4+, Snakemake, NGS tools)
+├── CLAUDE.md                    # agent instructions: rules, protocols, tool preferences
+├── base-env.yml                 # base conda environment (Python 3.11, R 4.4+, NGS tools)
 ├── biomni_mcp_server.py         # Biomni MCP server wrapper — register once with Claude Code
 ├── biomni_run.py                # Biomni library-mode runner for standalone tasks
 ├── .gitignore
+│
+├── .claude/
+│   ├── hooks/
+│   │   ├── pre-bash.sh          # Blocks pipeline execution without plan.approved sentinel
+│   │   └── post-sequential-thinking.sh  # Appends every ST invocation to st_invocations.log
+│   └── settings.json            # Hook registration
+│
+├── scripts/                     # Framework utility scripts
+│   ├── trace_logger.py          # Structured run trace logging (init, decisions, ST, Biomni)
+│   ├── check_knowhow_versions.py # Compares knowhow doc version pins vs. active conda env
+│   ├── review_diff.py           # Diffs consecutive peer review rounds (resolved/regressed/new)
+│   ├── harvest_session.py       # Extracts tool calls and ST blocks from session JSONL files
+│   └── provenance.py            # Records input file hashes and tool versions per run
+│
+├── tests/
+│   ├── adversarial/             # Deliberately broken inputs to verify agent error detection
+│   │   ├── batch_effect/        # Unlabeled batch structure in expression matrix
+│   │   ├── inflated_lambda/     # λ_GC = 2.1 GWAS summary stats
+│   │   ├── wrong_genome_build/  # hg19 BAM aligned to GRCh38 reference
+│   │   └── corrupted_gemma_output/ # Truncated GEMMA association output
+│   ├── regression/
+│   │   └── cfwmouse_gwas/       # Expected outputs from the mouse obesity GWAS pilot
+│   └── trace_quality/
+│       └── validate_trace.py    # Checks trace.jsonl for required logging events
 │
 ├── templates/                   # Starter pipeline templates
 │   ├── nextflow-rnaseq/         # STAR + salmon + DESeq2
 │   ├── nextflow-wgs/            # BWA-MEM2 + GATK4 + VEP
 │   ├── snakemake-rnaseq/        # STAR + featureCounts + DESeq2
 │   ├── singlecell-scanpy/       # Python scanpy + anndata
-│   └── singlecell-seurat/       # R Seurat v5
+│   ├── singlecell-seurat/       # R Seurat v5
+│   ├── hpc/                     # SLURM submission package templates
+│   │   ├── slurm_header_template.sh
+│   │   ├── transfer_instructions.md
+│   │   ├── expected_outputs_template.md
+│   │   └── local_postprocess_template.sh
+│   └── PROJECT_README_TEMPLATE.md
 │
-├── knowhow/                     # Domain-specific reference docs
-│   ├── gwas.md                  # Mouse/human GWAS, mixed models, GEMMA, R/qtl2
+├── knowhow/                     # Domain-specific reference docs (load with @file)
+│   ├── gwas.md                  # Mouse/human GWAS, mixed models, GEMMA, Lindley score
 │   ├── rnaseq.md                # Bulk RNA-seq QC, alignment, DE analysis
 │   ├── singlecell.md            # scRNA-seq thresholds, clustering, annotation
 │   ├── variant_calling.md       # GATK4 best practices, hard filter vs VQSR
-│   ├── pipeline_dev.md          # Nextflow vs Snakemake, nf-core, CI/CD
+│   ├── pipeline_dev.md          # Nextflow vs Snakemake, nf-core, HPC/SLURM, CI
 │   ├── biomni.md                # Biomni MCP setup, tool modules, when to use
 │   └── freelance_methods.md     # Publishable methods templates per workflow type
 │
@@ -218,7 +249,28 @@ The template covers:
 - Three-phase model selection protocol
 - Know-how doc references
 
-### 4. First Biomni run (downloads data lake)
+### 4. Session start checklist
+
+Run at the start of every new analysis session:
+
+```bash
+cd ~/agent/bioinformatics-freelance
+
+# Check tool versions match knowhow docs
+python scripts/check_knowhow_versions.py
+
+# Initialize run trace
+RUN_ID=$(date +%Y%m%d_%H%M%S)_<short_description>
+python scripts/trace_logger.py init-run \
+  --run-id $RUN_ID \
+  --project-dir projects/<your-project>/ \
+  --task-description "<one sentence>"
+
+# Load relevant knowhow doc in Claude Code
+# e.g.:  @knowhow/gwas.md
+```
+
+### 5. First Biomni run (downloads data lake)
 
 The first `biomni` invocation downloads ~11 GB of reference data to `biomni_data/`. Run once on
 a good connection before starting analyses:
@@ -244,6 +296,140 @@ Each template in `templates/` is a minimal, runnable Snakemake or Nextflow pipel
 | `snakemake-rnaseq` | Snakemake | STAR + featureCounts + DESeq2 |
 | `singlecell-scanpy` | Python | scanpy + scVI + celltypist |
 | `singlecell-seurat` | R | Seurat v5 + SingleR + DoubletFinder |
+
+---
+
+## Approval Gate
+
+Pipeline execution is gated on explicit user approval. The `.claude/hooks/pre-bash.sh` hook
+intercepts every Bash tool call and blocks `snakemake`, `nextflow run`, `sbatch`, `srun`, and
+`qsub` unless a `plan.approved` sentinel file exists in the current working directory.
+
+```bash
+# Workflow for every pipeline run:
+# 1. Agent generates plan.md in the project directory
+# 2. You review it
+# 3. Approve:  touch plan.approved
+# 4. Revoke:   rm plan.approved   (forces re-planning before next execution)
+```
+
+The agent never executes a pipeline without the sentinel. The Snakemake template also checks for
+it at the Python level as a second guard:
+
+```python
+if not os.path.exists("plan.approved"):
+    raise SystemExit("ERROR: plan.approved not found. Review plan.md first.")
+```
+
+---
+
+## Observability
+
+### Run traces
+
+Every analysis session is traced to `reasoning_traces/<run_id>/trace.jsonl`. The trace captures
+decisions, sequential thinking invocations, Biomni queries, and pipeline executions — providing
+an audit trail for every choice that shaped the result.
+
+Initialize a trace at the start of each session:
+
+```bash
+RUN_ID=$(date +%Y%m%d_%H%M%S)_<short_description>
+python scripts/trace_logger.py init-run \
+  --run-id $RUN_ID \
+  --project-dir projects/my-project/ \
+  --task-description "CFW mouse GWAS: QC and association testing"
+```
+
+Log key events as the session progresses:
+
+```bash
+# Method/tool selection
+python scripts/trace_logger.py log-decision \
+  --run-id $RUN_ID --project-dir projects/my-project/ \
+  --phase planning --decision "GEMMA LMM" \
+  --rationale "relatedness matrix accounts for CFW population structure" \
+  --alternatives-considered "PLINK logistic,SAIGE"
+
+# Biomni query result
+python scripts/trace_logger.py log-biomni \
+  --run-id $RUN_ID --project-dir projects/my-project/ \
+  --query "GWAS hits for mouse body weight" --tool-used "gwas_catalog" \
+  --summary "3 loci on chr2, chr4, chr12" \
+  --downstream-decision "prioritize Lepr, Mc4r for annotation"
+
+# Summarize at session end
+python scripts/trace_logger.py summarize \
+  --run-id $RUN_ID --project-dir projects/my-project/
+```
+
+### Sequential thinking audit log
+
+The `.claude/hooks/post-sequential-thinking.sh` hook fires after every sequential thinking
+invocation and appends a timestamped record to `.claude/st_invocations.log`. This provides a
+filesystem-level audit of every structured reasoning event, independent of the trace system.
+
+### Trace validation
+
+Run after any session to check that logging requirements were met:
+
+```bash
+python tests/trace_quality/validate_trace.py \
+  --run-id $RUN_ID --project-dir projects/my-project/
+# Exit 0 = all checks passed
+# Exit 1 = quality warnings (non-blocking)
+# Exit 2 = critical failures (e.g. no init-run entry)
+```
+
+Checks include: run initialized, at least one sequential thinking entry, no unclosed branches,
+all Biomni queries have downstream decisions recorded, planning decision logged before ExitPlanMode.
+
+### Session harvesting
+
+To reconstruct what happened in a past session from the Claude Code JSONL file:
+
+```bash
+python scripts/harvest_session.py \
+  --session-file ~/.claude/projects/<project>/<session_id>.jsonl \
+  --output-dir reasoning_traces/retro/
+```
+
+Outputs `session_summary.json` with tool call counts, bash commands, file operations, and
+sequential thinking blocks extracted from the raw session.
+
+---
+
+## Version Consistency
+
+The `check_knowhow_versions.py` script compares tool version pins in `knowhow/*.md` frontmatter
+against the active conda environment. Run it at the start of every session:
+
+```bash
+python scripts/check_knowhow_versions.py
+# Exit 0 = all MATCH or NOT_FOUND
+# Exit 1 = at least one MISMATCH (use --strict for CI)
+```
+
+If a MISMATCH is reported for a tool central to the current analysis, update the knowhow doc
+frontmatter or `base-env.yml` before proceeding. Mismatched versions in key tools (GATK, PLINK2,
+GEMMA) can silently change filter behavior and invalidate results.
+
+---
+
+## Adversarial Tests
+
+`tests/adversarial/` contains deliberately broken inputs designed to verify the agent detects
+and handles common failure modes before they reach results:
+
+| Test | What it checks |
+|------|---------------|
+| `inflated_lambda/` | Agent flags λ_GC = 2.1 and triggers sequential thinking before reporting |
+| `batch_effect/` | Unlabeled batch structure is identified via PCA before DE analysis |
+| `wrong_genome_build/` | hg19/GRCh38 mismatch detected from BAM header before alignment |
+| `corrupted_gemma_output/` | Truncated association file caught before downstream annotation |
+
+Run any test with its `run_test.sh` script. Each test has a `README.md` describing the injected
+fault and the expected agent response.
 
 ---
 
