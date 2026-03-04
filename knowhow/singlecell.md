@@ -1,3 +1,14 @@
+---
+last_verified: 2026-03-04
+tool_versions:
+  scanpy: "1.12"
+  anndata: "0.12.10"
+  seurat: "5.0.0"
+  harmony: "1.2.0"
+  scvi-tools: "1.1.0"
+  cellranger: "8.0.0"
+---
+
 # Single-Cell RNA-seq Know-How
 
 ## QC Thresholds (adjust per dataset)

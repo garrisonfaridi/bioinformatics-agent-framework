@@ -1,3 +1,14 @@
+---
+last_verified: 2026-03-04
+tool_versions:
+  fastp: "0.23.4"
+  star: "2.7.11a"
+  salmon: "1.10.0"
+  deseq2: "1.42.0"
+  multiqc: "1.21"
+  featurecounts: "2.0.6"
+---
+
 # Bulk RNA-seq Know-How
 
 ## FastQC / fastp Flags to Watch

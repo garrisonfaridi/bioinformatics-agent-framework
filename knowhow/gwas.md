@@ -163,8 +163,76 @@ lambda <- median(qchisq(1 - results$p_wald, 1)) / qchisq(0.5, 1)
 | LOD score (permutation, RI panels) | LOD > 3.5 (permutation-derived at α=0.05) |
 | Suggestive | 1 false positive expected per genome scan |
 | FDR (BH) | q < 0.05 for exploratory |
+| Lindley local score | Permutation-derived (99th–99.9th percentile of max null score) |
 
 For a panel of 92K SNPs (CFW), Bonferroni threshold = 0.05 / 92,000 ≈ **5.4×10⁻⁷**.
+
+---
+
+## Multi-Phenotype GWAS via Phenotype PCA
+
+### Rationale
+
+When a project measures multiple correlated phenotypes (e.g., plant defense traits such as
+glucosinolate content, trichome density, leaf chlorosis score), running independent GWAS for
+each trait inflates multiple-testing burden and ignores shared genetic architecture. PCA on
+the phenotype matrix captures dominant axes of covariation; the leading PCs become surrogate
+traits for GWAS and can reveal loci controlling the **syndrome** rather than any single trait.
+
+### Workflow
+
+```python
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+# 1. Load phenotype matrix (samples × traits); impute missing values before PCA
+pheno = pd.read_csv("phenotypes.csv", index_col=0)
+pheno_scaled = StandardScaler().fit_transform(pheno)
+
+# 2. PCA
+pca = PCA(n_components=10, random_state=42)
+pcs = pca.fit_transform(pheno_scaled)
+
+# 3. Select PCs explaining ≥5% variance (or elbow criterion)
+explained = pca.explained_variance_ratio_
+keep = [i for i, v in enumerate(explained) if v >= 0.05]
+
+# 4. Write PC phenotype files for GEMMA (-p flag)
+for i in keep:
+    pd.Series(pcs[:, i], index=pheno.index).to_csv(f"pc{i+1}_pheno.txt",
+                                                     header=False)
+```
+
+```bash
+# GEMMA LMM for each PC (column index is 1-based for -n; use -p for external file)
+for PC in 1 2 3; do
+    gemma -bfile genotypes_qc \
+          -k output/kinship.cXX.txt \
+          -lmm 4 \
+          -p pc${PC}_pheno.txt \
+          -o gwas_pc${PC}
+done
+```
+
+**GEMMA column indexing:** When phenotypes are embedded in the `.fam` file, `-n` is **1-based**
+(column 6 = trait 1 = `-n 1`). When supplying an external file via `-p`, the file contains a
+single column (one value per sample in the same order as `.fam`).
+
+### Biological interpretation of PCs
+
+- **PC1** (highest variance) typically captures the dominant syndrome axis — often a
+  constitutive-vs-induced defense gradient in plant immunity studies
+- Loadings (eigenvectors) show which traits drive each PC; large positive + negative loadings
+  indicate antagonistic trait modules
+- Report PC hits alongside per-trait GWAS for overlap; a locus significant for PC1 but not
+  any single trait is a **pleiotropic syndrome locus**
+
+### BSLMM on PCs vs. raw traits
+
+BSLMM run on PC phenotypes characterizes the **genetic architecture of the syndrome axis**,
+not of any single trait. `pge` close to 0 on PC1 indicates the syndrome is highly polygenic
+even if individual traits appear to have moderate-effect QTL.
 
 ---
 
@@ -253,6 +321,153 @@ characterize the genetic architecture of a trait. Key outputs from `.hyp.txt` MC
 
 ---
 
+## Lindley Process Local Score Analysis
+
+### Problem solved
+
+Standard Bonferroni/permutation significance requires an individual SNP to clear a genome-wide
+threshold. A genomic locus may harbor many SNPs with modest, sub-threshold p-values that
+collectively constitute strong evidence for association. The **Lindley process local score**
+detects contiguous regions of accumulated signal where no single SNP would pass individually.
+It complements Manhattan-style analysis rather than replacing it.
+
+**Key contrast:**
+- Bonferroni → single-SNP signal, controls FWER
+- Lindley local score → regional cumulative signal, detects dense polygenic loci
+
+### The Lindley recursion
+
+```python
+import numpy as np
+
+def local_score(p_values: np.ndarray, xi: float) -> np.ndarray:
+    """
+    Compute per-SNP Lindley local scores.
+
+    Parameters
+    ----------
+    p_values : array of per-SNP p-values (genome-order, chromosome-concatenated)
+    xi       : cost parameter (natural log scale); see table below
+
+    Returns
+    -------
+    s : array of local score values, same length as p_values
+    """
+    s = np.zeros(len(p_values))
+    s[0] = max(0.0, -np.log(p_values[0]) - xi)
+    for i in range(1, len(p_values)):
+        s[i] = max(0.0, s[i - 1] - np.log(p_values[i]) - xi)
+    return s
+```
+
+- `np.log` is **natural log** (ln); xi is on the ln scale — do NOT use log10
+- Each SNP increments the score by `-ln(p_i) - xi`
+- When p_i < e^{-xi}: increment is positive (signal SNP)
+- When p_i > e^{-xi}: increment is negative (noise SNP decays the score)
+- Score clamps at 0 — equivalent to a reflected random walk; resets after uninformative regions
+
+### xi parameter (natural log scale)
+
+| xi | ln threshold | ~p value | -log10(p) equiv | Interpretation |
+|----|-------------|----------|-----------------|----------------|
+| 2.5 | e^{-2.5} | 0.082 | 1.09 | Permissive: detects diffuse, spread-out signals |
+| 3.0 | e^{-3.0} | 0.050 | 1.30 | Moderate |
+| 3.5 | e^{-3.5} | 0.030 | 1.52 | Moderate-stringent |
+| 4.0 | e^{-4.0} | 0.018 | 1.74 | Stringent: only concentrated, peaked signals |
+
+The xi threshold is NOT per-SNP significance — it is the per-SNP cost. Many modest p-values
+below the threshold accumulate a high regional score.
+
+### Grid search strategy
+
+Run all xi values (2.5, 3.0, 3.5, 4.0) for every trait. Interpret robustness as follows:
+
+- **Significant at all xi (2.5–4.0):** Concentrated signal — a few SNPs drive the region;
+  most confident finding
+- **Significant only at low xi (2.5–3.0), not at 4.0:** Diffuse signal spread across many
+  modest SNPs; treat with caution; may reflect LD block structure rather than a single causal locus
+- **Not significant at any xi:** No regional accumulation above null expectation
+
+Report the xi range over which each region is significant as a robustness descriptor.
+
+### Permutation design and thresholds
+
+```python
+from numpy.random import SeedSequence, default_rng
+
+def permutation_thresholds(p_values, xi, n_perm=2000, base_seed=42,
+                            trait_name="", percentiles=(99, 99.5, 99.9)):
+    """Genome-wide permutation null for Lindley max score."""
+    seed_int = hash(trait_name) % (2**31)
+    ss = SeedSequence((base_seed, seed_int, int(xi * 1000)))
+    rng = default_rng(ss)
+
+    null_maxima = np.zeros(n_perm)
+    for b in range(n_perm):
+        p_shuf = rng.permutation(p_values)
+        null_maxima[b] = local_score(p_shuf, xi).max()
+
+    return {f"p{pc}": np.percentile(null_maxima, pc) for pc in percentiles}
+```
+
+- Shuffling breaks spatial correlation; null captures max score expected by chance genome-wide
+- 2,000 permutations gives stable 99th/99.5th percentile estimates; use 5,000 for publication
+- `SeedSequence` from `(base_seed, hash(trait), int(xi*1000))` ensures reproducibility across
+  traits and xi values while keeping seeds distinct
+
+### Output files (per trait, per xi)
+
+```
+{out_root}/{trait}/xi{xi}/
+  {trait}_local_scores_xi{xi}.tsv        # chr, pos, snp_id, p_wald, local_score
+  {trait}_perm_maxima_xi{xi}.npz         # array of n_perm null maxima
+  {trait}_thresholds_xi{xi}.csv          # threshold at 99th, 99.5th, 99.9th percentile
+
+{out_root}/{trait}/
+  grid_summary.csv                       # xi × threshold summary; one row per xi
+```
+
+### Interpreting local score vs. standard Manhattan
+
+1. Cross-reference local score peaks with Manhattan p-values; a region with max local score
+   above threshold but no sub-genome-wide Manhattan hit is a **sub-threshold polygenic locus**
+2. Regions significant on Manhattan AND local score are doubly confirmed
+3. Check LD structure of local score peaks (plink --ld-window) — a score plateau spanning a
+   strong LD block is less informative than a narrow peak flanked by score resets
+4. Local score boundaries (where score resets to 0) approximate the genomic extent of the
+   associated region — useful for defining the candidate gene search window
+
+### Compute requirements (HPC)
+
+For large studies, submit as a Slurm array: one job per (trait × xi) combination.
+
+```bash
+# Array size = n_traits × n_xi_values (e.g., 20 traits × 4 xi = 80 jobs)
+#SBATCH --array=0-79
+#SBATCH --mem=8G
+#SBATCH --cpus-per-task=1
+#SBATCH --time=02:00:00   # 2000 permutations × 200K SNPs ~ 20–40 min per job
+```
+
+Each job loads the genome-wide p-value vector for one trait (~few MB), runs 2000 permutations
+(pure Python/numpy loop; no external dependencies), and writes thresholds + npz to disk.
+
+### Publishable methods template
+
+> Contiguous genomic regions of accumulated association signal were identified using the
+> Lindley process local score [Guedj et al. 2006; Bonhomme et al. 20XX]. For each trait,
+> the per-SNP Wald p-values from GEMMA LMM were converted to local scores using the
+> recursion s_i = max(0, s_{i-1} − ln(p_i) − ξ), evaluated across a grid of cost parameters
+> ξ ∈ {2.5, 3.0, 3.5, 4.0} (natural log scale). Significance thresholds were empirically
+> derived from 2,000 genome-wide permutations of the p-value vector (99th, 99.5th, and 99.9th
+> percentiles of the null maximum score distribution). Permutation seeds were fixed per
+> (trait, ξ) combination using NumPy SeedSequence for reproducibility. Regions exceeding the
+> 99th percentile threshold at all four ξ values were classified as concentrated signals;
+> regions significant only at ξ ≤ 3.0 were classified as diffuse signals warranting
+> independent replication.
+
+---
+
 ## Claude API Peer Review Agent Pattern
 
 For GWAS pipelines, a post-analysis peer review step using Claude API provides automated
@@ -298,3 +513,11 @@ to implement. This enforces the approve-before-execute contract for all review-d
 - Nicod J et al. (2022) Age and diet shape the genetic architecture of body weight in diversity
   outbred mice. *eLife* 11:e64329.
 - Bennett BJ et al. (2015) High-density genotypes of inbred mouse strains. *G3* 5:1793–1806.
+- Guedj M et al. (2006) A scored AUC metric reveals hidden efficacy improvements in head-to-head
+  antibiotic trials. *Statistical Applications in Genetics and Molecular Biology* — original
+  formalization of the local score for biological sequence analysis (Lindley recursion).
+- Bonhomme M et al. — application of Lindley local score to plant GWAS (Arabidopsis); demonstrates
+  detection of sub-threshold polygenic loci in defense trait mapping.
+- *Implementation note:* Lindley recursion details (xi grid, permutation design, SeedSequence
+  seeding) are documented from the plant_defense_syndrome_gwas project notebook
+  (`lind_cons_grid_seed.py`); see Lindley Process section above.

@@ -1,3 +1,14 @@
+---
+last_verified: 2026-03-04
+tool_versions:
+  gatk: "4.5.0.0"
+  bwamem2: "2.2.1"
+  samtools: "1.19"
+  picard: "3.1.0"
+  vep: "111"
+  bcftools: "1.19"
+---
+
 # Variant Calling Know-How
 
 ## GATK4 Best Practices — Germline

@@ -1,0 +1,148 @@
+"""
+Snakemake RNA-seq pipeline template.
+QC → alignment (STAR) → quantification (featureCounts/salmon) → DE (DESeq2)
+
+Fill in configfile path and rule implementations for your project.
+All rules must use containers (no bare conda in rule shells).
+"""
+
+import os
+
+# ---------------------------------------------------------------------------
+# Approval gate — must exist before any pipeline execution
+# ---------------------------------------------------------------------------
+if not os.path.exists("plan.approved"):
+    raise SystemExit(
+        "ERROR: plan.approved not found. "
+        "Review plan.md and run 'touch plan.approved' to proceed."
+    )
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+configfile: "config/config.yaml"
+
+SAMPLES = list(config["samples"].keys())
+CONTRASTS = config.get("contrasts", [])
+
+# ---------------------------------------------------------------------------
+# Target rule
+# ---------------------------------------------------------------------------
+rule all:
+    input:
+        "results/qc/multiqc_report.html",
+        expand("results/counts/{sample}.counts.tsv", sample=SAMPLES),
+        expand("results/deseq2/{contrast}_results.tsv", contrast=CONTRASTS),
+
+# ---------------------------------------------------------------------------
+# Rules (implement per project)
+# ---------------------------------------------------------------------------
+rule fastp_trim:
+    input:
+        r1 = "data/raw/{sample}_R1.fastq.gz",
+        r2 = "data/raw/{sample}_R2.fastq.gz",
+    output:
+        r1 = "results/trimmed/{sample}_R1.fastq.gz",
+        r2 = "results/trimmed/{sample}_R2.fastq.gz",
+        json = "results/qc/fastp/{sample}.json",
+        html = "results/qc/fastp/{sample}.html",
+    log:
+        "logs/fastp/{sample}.log",
+    container:
+        "docker://quay.io/biocontainers/fastp:0.23.4--hadf994f_2"
+    shell:
+        """
+        fastp \
+            -i {input.r1} -I {input.r2} \
+            -o {output.r1} -O {output.r2} \
+            --json {output.json} --html {output.html} \
+            --thread {threads} 2>{log}
+        """
+
+
+rule star_align:
+    input:
+        r1 = "results/trimmed/{sample}_R1.fastq.gz",
+        r2 = "results/trimmed/{sample}_R2.fastq.gz",
+        index = config["star_index"],
+    output:
+        bam = "results/alignment/{sample}/Aligned.sortedByCoord.out.bam",
+        log_final = "results/alignment/{sample}/Log.final.out",
+    log:
+        "logs/star/{sample}.log",
+    threads: 8
+    container:
+        "docker://quay.io/biocontainers/star:2.7.11a--h0033a41_0"
+    shell:
+        """
+        STAR \
+            --runThreadN {threads} \
+            --genomeDir {input.index} \
+            --readFilesIn {input.r1} {input.r2} \
+            --readFilesCommand zcat \
+            --outSAMtype BAM SortedByCoordinate \
+            --outFileNamePrefix results/alignment/{wildcards.sample}/ \
+            2>{log}
+        """
+
+
+rule feature_counts:
+    input:
+        bam = "results/alignment/{sample}/Aligned.sortedByCoord.out.bam",
+        gtf = config["gtf"],
+    output:
+        counts = "results/counts/{sample}.counts.tsv",
+        summary = "results/counts/{sample}.counts.tsv.summary",
+    log:
+        "logs/featurecounts/{sample}.log",
+    threads: 4
+    container:
+        "docker://quay.io/biocontainers/subread:2.0.6--he4a0461_0"
+    shell:
+        """
+        featureCounts \
+            -T {threads} \
+            -a {input.gtf} \
+            -o {output.counts} \
+            -p --countReadPairs \
+            {input.bam} 2>{log}
+        """
+
+
+rule multiqc:
+    input:
+        fastp  = expand("results/qc/fastp/{sample}.json", sample=SAMPLES),
+        star   = expand("results/alignment/{sample}/Log.final.out", sample=SAMPLES),
+        counts = expand("results/counts/{sample}.counts.tsv.summary", sample=SAMPLES),
+    output:
+        "results/qc/multiqc_report.html",
+    log:
+        "logs/multiqc.log",
+    container:
+        "docker://quay.io/biocontainers/multiqc:1.21--pyhdfd78af_0"
+    shell:
+        "multiqc results/ -o results/qc/ 2>{log}"
+
+
+rule deseq2:
+    input:
+        counts   = expand("results/counts/{sample}.counts.tsv", sample=SAMPLES),
+        metadata = "config/samples.tsv",
+        script   = "scripts/deseq2.R",
+    output:
+        results = "results/deseq2/{contrast}_results.tsv",
+        plots   = "results/deseq2/{contrast}_plots.pdf",
+    log:
+        "logs/deseq2/{contrast}.log",
+    container:
+        "docker://bioconductor/bioconductor_docker:RELEASE_3_19"
+    shell:
+        """
+        Rscript {input.script} \
+            --counts {input.counts} \
+            --metadata {input.metadata} \
+            --contrast {wildcards.contrast} \
+            --output-results {output.results} \
+            --output-plots {output.plots} \
+            2>{log}
+        """
