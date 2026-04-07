@@ -1,7 +1,8 @@
 # Bioinformatics Agent Framework
 
 An agentic bioinformatics workflow system built on [Claude Code](https://claude.ai/claude-code),
-integrating autonomous AI planning, Snakemake pipeline execution, and automated scientific peer review.
+integrating autonomous AI planning, Snakemake/Nextflow pipeline execution, automated scientific
+peer review, and end-to-end autonomous research via the Kinesin system.
 
 ## What This Is
 
@@ -17,8 +18,7 @@ AI capability:
    points involving competing hypotheses, method tradeoffs, or unexpected results; makes reasoning
    explicit and auditable rather than buried in inline inference
 
-The result is a system where you describe a bioinformatics question in plain language and receive
-a reproducible, peer-reviewed analysis pipeline.
+For fully autonomous research (literature → debate → analysis → paper), see [Kinesin](#kinesin-autonomous-research-system) below.
 
 ---
 
@@ -108,12 +108,83 @@ these conditions are met:
 
 ---
 
+## Kinesin: Autonomous Research System
+
+`kinesin/` is an end-to-end autonomous research system that integrates three specialized subsystems
+on top of the bioinformatics framework:
+
+- **ARC (AutoResearchClaw)** — literature mining, hypothesis generation, and scientific paper writing (Stages 1–23)
+- **ScienceClaw** — 3-agent debate layer (skeptic / synthesizer / pragmatist) that stress-tests hypotheses and generates `plan_context.md`
+- **OmicsClaw** — 24 spatial transcriptomics and single-cell RNA-seq skills invoked by the debate layer or as standalone scripts
+
+### Installation
+
+```bash
+pip install -r kinesin/requirements.txt
+bash kinesin/setup_kinesin.sh   # one-time ScienceClaw initialization
+```
+
+For spatial deep learning support (SpaGCN/STAGATE):
+```bash
+pip install omicsclaw[spatial-domains]
+```
+
+### Modes
+
+| Mode | Layers | Approx cost | Gate required |
+|------|--------|-------------|---------------|
+| `literature-only` | Literature + debate | ~$0.70–1.40 | No |
+| `debate-only` | Debate only | ~$0.30–0.60 | No |
+| `write-only` | Paper writing | ~$0.60–1.20 | No |
+| `full` | All layers | ~$1.30–2.60 | Yes (`plan.approved`) |
+
+```bash
+# Full pipeline (literature → debate → [gate] → paper)
+python kinesin/run.py \
+  --topic "pioneer TFs in pediatric neurological disease" \
+  --mode full \
+  --config kinesin/config.yaml \
+  --project-dir projects/my-project/
+
+# Literature only (cheapest, no approval gate)
+python kinesin/run.py \
+  --topic "genetic basis of stomatal aperture control in Arabidopsis" \
+  --mode literature-only \
+  --config kinesin/config.yaml \
+  --project-dir projects/my-project/
+```
+
+### Layers
+
+1. **`literature/`** — ARC Stages 1–8: topic initialization → hypothesis generation → `research_brief.json`
+2. **`coordination/`** — ScienceClaw 3-agent debate: stress-tests hypotheses → `plan_context.md`
+3. **[external]** — Existing framework pipelines (Nextflow, Snakemake, peer review) → `results/`
+4. **`writing/`** — ARC Stages 16–23: outline → draft → citations → `deliverables/`
+5. **`metaclaw/`** — Optional cross-run learning via EvolutionStore (off by default)
+
+The plan gate in `full` mode blocks between layers 2 and 3 until `touch projects/my-project/plan.approved`.
+
+### OmicsClaw Bio Skills
+
+24 skills in `kinesin/coordination/bio_skills/`:
+
+- **15 spatial transcriptomics:** `spatial-preprocess`, `spatial-domains`, `spatial-deconvolution`, `spatial-trajectory`, and more
+- **9 single-cell RNA-seq:** `sc-preprocessing`, `sc-doublet-detection`, `sc-de`, `sc-batch-integration`, `sc-cell-annotation`, `sc-grn`, `sc-cell-communication`, `sc-multiome`, and more
+
+Skills run standalone with `--demo` for testing:
+
+```bash
+python3 kinesin/coordination/bio_skills/sc-preprocessing/scripts/sc_preprocessing.py --demo
+python3 kinesin/coordination/bio_skills/spatial-domains/scripts/spatial_domains.py --demo
+```
+
+---
+
 ## Repository Contents
 
 ```
 bioinformatics-freelance/
 ├── README.md                    # this file
-├── CLAUDE.md                    # agent instructions: rules, protocols, tool preferences
 ├── base-env.yml                 # base conda environment (Python 3.11, R 4.4+, NGS tools)
 ├── biomni_mcp_server.py         # Biomni MCP server wrapper — register once with Claude Code
 ├── biomni_run.py                # Biomni library-mode runner for standalone tasks
@@ -130,7 +201,21 @@ bioinformatics-freelance/
 │   ├── check_knowhow_versions.py # Compares knowhow doc version pins vs. active conda env
 │   ├── review_diff.py           # Diffs consecutive peer review rounds (resolved/regressed/new)
 │   ├── harvest_session.py       # Extracts tool calls and ST blocks from session JSONL files
-│   └── provenance.py            # Records input file hashes and tool versions per run
+│   ├── provenance.py            # Records input file hashes and tool versions per run
+│   └── narrate.py               # Fire-and-forget terminal narration for phase/event logging
+│
+├── ldsc/                        # LD Score Regression (Bulik-Sullivan et al.) — heritability,
+│                                #   genetic correlation, and partitioned heritability analysis
+│
+├── kinesin/                     # Autonomous end-to-end research system (ARC + ScienceClaw + OmicsClaw)
+│   ├── run.py                   # Entry point — modes: full, literature-only, debate-only, write-only
+│   ├── config.yaml              # Default configuration
+│   ├── literature/              # ARC Stages 1–8: literature mining and hypothesis generation
+│   ├── coordination/            # ScienceClaw 3-agent debate + 24 OmicsClaw bio skills
+│   │   └── bio_skills/          # 15 spatial + 9 scRNA-seq standalone skills
+│   ├── writing/                 # ARC Stages 16–23: paper outline → draft → citations
+│   ├── metaclaw/                # Optional cross-run learning via EvolutionStore
+│   └── tests/                   # Integration + adversarial tests
 │
 ├── tests/
 │   ├── adversarial/             # Deliberately broken inputs to verify agent error detection
@@ -154,20 +239,21 @@ bioinformatics-freelance/
 │   │   ├── transfer_instructions.md
 │   │   ├── expected_outputs_template.md
 │   │   └── local_postprocess_template.sh
+│   ├── project_intake.md        # Session intake form — fill at analysis start
 │   └── PROJECT_README_TEMPLATE.md
 │
-├── knowhow/                     # Domain-specific reference docs (load with @file)
-│   ├── gwas.md                  # Mouse/human GWAS, mixed models, GEMMA, Lindley score
-│   ├── rnaseq.md                # Bulk RNA-seq QC, alignment, DE analysis
-│   ├── singlecell.md            # scRNA-seq thresholds, clustering, annotation
-│   ├── variant_calling.md       # GATK4 best practices, hard filter vs VQSR
-│   ├── pipeline_dev.md          # Nextflow vs Snakemake, nf-core, HPC/SLURM, CI
-│   ├── biomni.md                # Biomni MCP setup, tool modules, when to use
-│   └── freelance_methods.md     # Publishable methods templates per workflow type
-│
-└── projects/
-    └── mouse-obesity-gwas/      # Documented pilot: CFW mouse body weight GWAS
+└── knowhow/                     # Domain-specific reference docs (load with @file)
+    ├── gwas.md                  # Mouse/human GWAS, mixed models, GEMMA, Lindley score
+    ├── rnaseq.md                # Bulk RNA-seq QC, alignment, DE analysis
+    ├── singlecell.md            # scRNA-seq thresholds, clustering, annotation
+    ├── variant_calling.md       # GATK4 best practices, hard filter vs VQSR
+    ├── pipeline_dev.md          # Nextflow vs Snakemake, nf-core, HPC/SLURM, CI
+    ├── biomni.md                # Biomni MCP setup, tool modules, when to use
+    └── freelance_methods.md     # Publishable methods templates per workflow type
 ```
+
+> **Note:** `projects/` is gitignored — analysis outputs, genotype files, and large results live
+> locally only.
 
 ---
 
@@ -227,12 +313,8 @@ Then restart Claude Code. Verify with `claude mcp list`.
 
 ### 3. Configure CLAUDE.md
 
-A `CLAUDE.md` template is included at the repo root. Copy it to your preferred location
-(`~/agent/CLAUDE.md` or `~/.claude/CLAUDE.md`) and replace the bracketed fields:
-
-```bash
-cp CLAUDE.md ~/agent/CLAUDE.md   # or ~/.claude/CLAUDE.md for global scope
-```
+Copy the `CLAUDE.md` template from `~/agent/CLAUDE.md` (or use your own) to your preferred
+location and replace the bracketed fields:
 
 Fields to customize:
 - `[YOUR_DEGREE_AND_SPECIALTY]` — your background
@@ -240,21 +322,14 @@ Fields to customize:
 - `[PATH_TO_KNOWHOW]` — absolute path to your `knowhow/` directory
 - `[PATH_TO_REPO]` — absolute path to this repo root
 
-The template covers:
-- Background (your specialty areas and languages)
-- Hard rules (pin versions, use containers, random seeds, README+methods per project)
-- Tool preferences table
-- Biomni invocation patterns
-- Sequential thinking protocol with mandatory trigger rules
-- Three-phase model selection protocol
-- Know-how doc references
-
 ### 4. Session start checklist
-
-Run at the start of every new analysis session:
 
 ```bash
 cd ~/agent/bioinformatics-freelance
+
+# Fill out session intake
+# cp templates/project_intake.md projects/my-project/intake.md
+# edit intake.md, then load it: @projects/my-project/intake.md
 
 # Check tool versions match knowhow docs
 python scripts/check_knowhow_versions.py
@@ -297,6 +372,63 @@ Each template in `templates/` is a minimal, runnable Snakemake or Nextflow pipel
 | `singlecell-scanpy` | Python | scanpy + scVI + celltypist |
 | `singlecell-seurat` | R | Seurat v5 + SingleR + DoubletFinder |
 
+### Project Intake Template
+
+`templates/project_intake.md` is a structured session intake form covering:
+
+- Session identity (run_id, analysis_type, project_dir)
+- Organism and genome build
+- Dataset description (samples, covariates, known confounders)
+- Analysis-type-specific parameters (GWAS QC thresholds, scRNA-seq cell counts, etc.)
+- Deliverables and methods template target
+
+Load it at the start of any analysis session alongside the relevant knowhow doc:
+
+```bash
+@templates/project_intake.md
+@knowhow/gwas.md
+```
+
+---
+
+## LD Score Regression (`ldsc/`)
+
+`ldsc/` contains the standard LDSC tool (Bulik-Sullivan et al.) for:
+- **SNP heritability** — `ldsc.py --h2`
+- **Genetic correlation** — `ldsc.py --rg`
+- **Partitioned heritability** — annotation-stratified h² enrichment analysis
+- **Munge summary stats** — `munge_sumstats.py` for harmonizing GWAS summary statistics
+
+```bash
+conda env create -f ldsc/environment.yml
+conda activate ldsc
+
+# Munge and estimate heritability
+python ldsc/munge_sumstats.py --sumstats gwas.txt --out gwas_munged
+python ldsc/ldsc.py --h2 gwas_munged.sumstats.gz --ref-ld-chr eur_w_ld_chr/ --w-ld-chr eur_w_ld_chr/ --out h2_output
+```
+
+---
+
+## Narration (`scripts/narrate.py`)
+
+`narrate.py` provides fire-and-forget terminal narration for multi-step analyses. It prints
+phase-labeled, colored output to the terminal and optionally appends a JSON event record to
+the active run trace.
+
+```bash
+python scripts/narrate.py \
+  --phase research \
+  --event biomni_query \
+  --message "GWAS Catalog query returned 3 loci on chr2, chr4, chr12 for body weight" \
+  --flag ok
+```
+
+Phases: `research` (cyan), `planning` (magenta), `execute` (green), `review` (blue).
+Flags: `ok` (✓), `warn` (⚠), `st` (🔀 sequential thinking triggered).
+
+Mandatory trigger points are defined in `CLAUDE.md` under *Narration Protocol*.
+
 ---
 
 ## Approval Gate
@@ -313,14 +445,6 @@ intercepts every Bash tool call and blocks `snakemake`, `nextflow run`, `sbatch`
 # 4. Revoke:   rm plan.approved   (forces re-planning before next execution)
 ```
 
-The agent never executes a pipeline without the sentinel. The Snakemake template also checks for
-it at the Python level as a second guard:
-
-```python
-if not os.path.exists("plan.approved"):
-    raise SystemExit("ERROR: plan.approved not found. Review plan.md first.")
-```
-
 ---
 
 ## Observability
@@ -328,10 +452,7 @@ if not os.path.exists("plan.approved"):
 ### Run traces
 
 Every analysis session is traced to `reasoning_traces/<run_id>/trace.jsonl`. The trace captures
-decisions, sequential thinking invocations, Biomni queries, and pipeline executions — providing
-an audit trail for every choice that shaped the result.
-
-Initialize a trace at the start of each session:
+decisions, sequential thinking invocations, Biomni queries, and pipeline executions.
 
 ```bash
 RUN_ID=$(date +%Y%m%d_%H%M%S)_<short_description>
@@ -339,24 +460,13 @@ python scripts/trace_logger.py init-run \
   --run-id $RUN_ID \
   --project-dir projects/my-project/ \
   --task-description "CFW mouse GWAS: QC and association testing"
-```
 
-Log key events as the session progresses:
-
-```bash
 # Method/tool selection
 python scripts/trace_logger.py log-decision \
   --run-id $RUN_ID --project-dir projects/my-project/ \
   --phase planning --decision "GEMMA LMM" \
-  --rationale "relatedness matrix accounts for CFW population structure" \
+  --rationale "relatedness matrix accounts for population structure" \
   --alternatives-considered "PLINK logistic,SAIGE"
-
-# Biomni query result
-python scripts/trace_logger.py log-biomni \
-  --run-id $RUN_ID --project-dir projects/my-project/ \
-  --query "GWAS hits for mouse body weight" --tool-used "gwas_catalog" \
-  --summary "3 loci on chr2, chr4, chr12" \
-  --downstream-decision "prioritize Lepr, Mc4r for annotation"
 
 # Summarize at session end
 python scripts/trace_logger.py summarize \
@@ -366,12 +476,9 @@ python scripts/trace_logger.py summarize \
 ### Sequential thinking audit log
 
 The `.claude/hooks/post-sequential-thinking.sh` hook fires after every sequential thinking
-invocation and appends a timestamped record to `.claude/st_invocations.log`. This provides a
-filesystem-level audit of every structured reasoning event, independent of the trace system.
+invocation and appends a timestamped record to `.claude/st_invocations.log`.
 
 ### Trace validation
-
-Run after any session to check that logging requirements were met:
 
 ```bash
 python tests/trace_quality/validate_trace.py \
@@ -381,12 +488,7 @@ python tests/trace_quality/validate_trace.py \
 # Exit 2 = critical failures (e.g. no init-run entry)
 ```
 
-Checks include: run initialized, at least one sequential thinking entry, no unclosed branches,
-all Biomni queries have downstream decisions recorded, planning decision logged before ExitPlanMode.
-
 ### Session harvesting
-
-To reconstruct what happened in a past session from the Claude Code JSONL file:
 
 ```bash
 python scripts/harvest_session.py \
@@ -394,15 +496,9 @@ python scripts/harvest_session.py \
   --output-dir reasoning_traces/retro/
 ```
 
-Outputs `session_summary.json` with tool call counts, bash commands, file operations, and
-sequential thinking blocks extracted from the raw session.
-
 ---
 
 ## Version Consistency
-
-The `check_knowhow_versions.py` script compares tool version pins in `knowhow/*.md` frontmatter
-against the active conda environment. Run it at the start of every session:
 
 ```bash
 python scripts/check_knowhow_versions.py
@@ -411,43 +507,48 @@ python scripts/check_knowhow_versions.py
 ```
 
 If a MISMATCH is reported for a tool central to the current analysis, update the knowhow doc
-frontmatter or `base-env.yml` before proceeding. Mismatched versions in key tools (GATK, PLINK2,
-GEMMA) can silently change filter behavior and invalidate results.
+frontmatter or `base-env.yml` before proceeding.
 
 ---
 
 ## Adversarial Tests
 
-`tests/adversarial/` contains deliberately broken inputs designed to verify the agent detects
-and handles common failure modes before they reach results:
+`tests/adversarial/` contains deliberately broken inputs to verify the agent detects common
+failure modes before they reach results:
 
 | Test | What it checks |
 |------|---------------|
 | `inflated_lambda/` | Agent flags λ_GC = 2.1 and triggers sequential thinking before reporting |
-| `batch_effect/` | Unlabeled batch structure is identified via PCA before DE analysis |
+| `batch_effect/` | Unlabeled batch structure identified via PCA before DE analysis |
 | `wrong_genome_build/` | hg19/GRCh38 mismatch detected from BAM header before alignment |
 | `corrupted_gemma_output/` | Truncated association file caught before downstream annotation |
 
 Run any test with its `run_test.sh` script. Each test has a `README.md` describing the injected
-fault and the expected agent response.
+fault and expected agent response.
+
+Kinesin adversarial tests live in `kinesin/tests/adversarial/`:
+
+| Test | What it checks |
+|------|---------------|
+| `arc_hallucinated_citations/` | ARC fabricated reference detection |
+| `empty_debate_result/` | Debate layer graceful handling of no consensus |
+| `spatial_skill_missing_deps/` | Spatial skill fallback when SpaGCN/STAGATE absent |
 
 ---
 
 ## Peer Review Agent Pattern
 
-Every pipeline in this framework ends with an automated Claude Opus peer review step. The
-`peer_review` rule (Snakemake) or `peer_review` process (Nextflow) runs last and:
+Every pipeline ends with an automated Claude Opus peer review step that:
 
 1. Collects all analysis outputs (QC stats, results summaries, key metrics)
 2. Calls Claude Opus with a domain-specific review prompt
-3. Writes three files:
+3. Writes:
    - `results/peer_review/review_report.md` — full narrative review with section scores
    - `results/peer_review/issues.json` — structured issue list with severity tags
    - `results/peer_review/proposed_changes.md` — actionable corrections requiring user approval
 
-**The approve-before-execute contract:** proposed changes are never auto-applied. The user reads
-`proposed_changes.md`, then explicitly approves: *"Implement the proposed changes from
-proposed_changes.md"*. This keeps humans in the loop for all scientifically significant corrections.
+Proposed changes are never auto-applied. The user reads `proposed_changes.md` and explicitly
+approves before any correction is implemented.
 
 ---
 
@@ -457,48 +558,13 @@ The agent uses the `sequential-thinking` MCP to make reasoning explicit at high-
 points. This is **automatic** — not user-initiated — and fires based on uncertainty thresholds
 defined in `CLAUDE.md`.
 
-### Why this matters for complex analyses
-
-Inline reasoning (thinking while writing a response) is invisible and irreversible. When a
-bioinformatics decision has real consequences — choosing a normalization method, diagnosing a
-discrepancy, setting a QC threshold — unstructured reasoning can commit to a wrong branch too
-early without exploring alternatives.
-
-Sequential thinking enforces:
+Inline reasoning is invisible and irreversible. Sequential thinking enforces:
 - **Explicit branching** — every plausible explanation is enumerated before any is acted on
 - **Revision** — earlier steps can be marked wrong and reconsidered (`isRevision=True`)
-- **Verifiable conclusions** — reasoning terminates only when a position can be defended, not when it feels right
+- **Verifiable conclusions** — reasoning terminates only when a position can be defended
 
-### Example: SNP count discrepancy (mouse GWAS pilot)
-
-Without sequential thinking, the agent saw "61,954 post-QC SNPs" in the QC summary vs "16,710"
-in the Bonferroni threshold and immediately investigated the most salient hypothesis (label bug).
-That happened to be correct — but three other hypotheses (wrong BIM, PLINK filter ordering bug,
-calculation error in check_significance.py) were never formally enumerated or ruled out.
-
-With sequential thinking configured, the agent would have opened all four branches, read the
-relevant source for each, and closed them with evidence before committing to the fix. The result
-is the same, but the reasoning is traceable and less likely to miss a branch on harder problems.
-
-### When it fires
-
-See the trigger table in the [Three-Phase AI Workflow](#three-phase-ai-workflow) section above.
+See trigger conditions in the [Three-Phase AI Workflow](#three-phase-ai-workflow) section.
 Full specification is in `CLAUDE.md` under *Sequential Thinking Protocol*.
-
----
-
-## Example Project: Mouse Obesity GWAS
-
-`projects/mouse-obesity-gwas/` is a fully documented pilot run of a genome-wide association study
-for body weight in outbred CFW mice (N=453, 16,710 SNPs). It demonstrates:
-
-- Snakemake pipeline with checkpoint-based dynamic branching (enrichment vs. BSLMM)
-- Biomni biological QC step with Claude API fallback
-- Claude Opus peer review with 2-round correction cycle
-- Agent-driven debugging of real pipeline failures (R fread parsing bug, conda env reference)
-- Gene annotation via Ensembl REST API
-
-See `projects/mouse-obesity-gwas/README.md` for full documentation.
 
 ---
 
@@ -508,11 +574,8 @@ The `knowhow/` directory contains dense reference docs for the most common bioin
 Load them into a Claude Code session with `@file` syntax:
 
 ```bash
-# In Claude Code, when starting a GWAS project:
-@~/path/to/knowhow/gwas.md
-
-# For scRNA-seq:
-@~/path/to/knowhow/singlecell.md
+@~/agent/bioinformatics-freelance/knowhow/gwas.md
+@~/agent/bioinformatics-freelance/knowhow/singlecell.md
 ```
 
 Each doc covers: method overview, preferred tools with versions, standard workflow, key databases,
