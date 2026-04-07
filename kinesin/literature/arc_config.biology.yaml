@@ -1,0 +1,28 @@
+# ARC (AutoResearchClaw) configuration — biology profile
+# Tuned for genomics / molecular biology; experiment stages disabled (Stages 9-13 omitted).
+# Used by kinesin/literature/arc_bridge.py via RCConfig(**arc_config_for_biology()).
+
+research:
+  domains:
+    - genomics
+    - molecular_biology
+    - cell_biology
+  daily_paper_count: 12
+  quality_threshold: 4.5
+  max_papers_per_query: 50
+  language: english
+
+# Omitting the 'experiment:' section entirely disables ARC Stages 9-13.
+# Stage 9 (EXPERIMENT_DESIGN) gate will not be reached; pipeline stops at Stage 8.
+
+runtime:
+  stop_on_gate: true
+  auto_approve_stage5: true    # LITERATURE_SCREEN gate auto-approved
+  log_level: INFO
+  trace_events: true           # write events to trace.jsonl
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-6
+  temperature: 0.3
+  max_tokens: 4096

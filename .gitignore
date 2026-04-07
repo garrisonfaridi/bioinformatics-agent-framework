@@ -5,6 +5,9 @@ biomni_data/
 logs/
 .snakemake/
 
+# Projects contain large results/genotype data — not tracked in repo
+projects/
+
 # Python
 __pycache__/
 *.pyc
@@ -15,3 +18,5 @@ __pycache__/
 # System
 .DS_Store
 Thumbs.db
+.env
+.researchclaw_cache/

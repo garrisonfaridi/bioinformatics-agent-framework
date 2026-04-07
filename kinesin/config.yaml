@@ -1,0 +1,21 @@
+arc:
+  config_file: kinesin/literature/arc_config.biology.yaml
+  metaclaw_enabled: false
+
+scienceclaw:
+  investigation_type: auto     # auto | mechanism-elucidation | hypothesis-testing
+  agent_count: 3               # number of parallel personality-profiled runs
+  debate_rounds: 1
+  personalities:
+    - skeptic
+    - synthesizer
+    - pragmatist
+
+writing:
+  target_conference: biorxiv   # biorxiv | neurips_2025 | plos_one
+  authors: "Garrison Faridi"
+
+existing_framework:
+  scripts_dir: ~/agent/bioinformatics-freelance/scripts
+  knowhow_dir: ~/agent/bioinformatics-freelance/knowhow
+  project_template: ~/agent/bioinformatics-freelance/templates/PROJECT_README_TEMPLATE.md

@@ -1,0 +1,23 @@
+research:
+  domains:
+    - genomics
+    - molecular_biology
+    - cell_biology
+    - spatial_transcriptomics
+    - neuroscience
+  daily_paper_count: 20
+  quality_threshold: 3.5
+  max_papers_per_query: 30
+  language: english
+
+runtime:
+  stop_on_gate: true
+  auto_approve_stage5: true
+  log_level: INFO
+  trace_events: true
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-6
+  temperature: 0.3
+  max_tokens: 4096
